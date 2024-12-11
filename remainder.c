@@ -173,3 +173,10 @@ for(j=0; j <= 4; j++, dPowerJ += 2) {
 	}
 return(dFactor * dTotal);
 }
+
+
+//printf("Size of unsigned int: %zu bytes\n", sizeof(unsigned int));						4 bytes
+//printf("Size of unsigned long int: %zu bytes\n", sizeof(unsigned long int));				4 bytes
+//printf("Size of unsigned long long int: %zu bytes\n", sizeof(unsigned long long int));	8 bytes
+
+// mpfr_printf("%.40Rf \n", Power3Term);

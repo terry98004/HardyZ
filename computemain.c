@@ -1,5 +1,5 @@
 // -------------------------------------------------------------------
-// Program last modified November 23, 2024. 
+// Program last modified December 10, 2024. 
 // Copyright (c) 2024 Terrence P. Murphy
 // MIT License -- see hardyz.c for details.
 // -------------------------------------------------------------------
@@ -64,7 +64,6 @@ int ComputeHardyZ(struct HZ hz)
 mpfr_t			t, tOver2Pi, T, Incr, N, P, Temp1, Main, Remainder, HardyZ;
 int				i;
 unsigned int	uiN;
-long double		tFraction, dP, ldRemainder;
 
 // -------------------------------------------------------------------
 // Initiate use of the MPFR system.  
@@ -74,12 +73,23 @@ InitMPFR(hz);
 // -------------------------------------------------------------------
 // Initialize several MPFR variables.  The 't' value is obtained
 // from the hz.tBuf string, and the amount to increment 't' is obtained
-// from hz.dIncr.  Both are then stored in MPFR vaiables.  
+// from the hz.incrBuf string.  
+// We also set Temp1 to the maximum allowed size of 't' for use in the
+// mpfr_cmp function just below.
+// We use the mpfr_set_str function because the MPFR FAQ says that the
+// other variations such as mpfr_set_ld are much less accurate.
 // -------------------------------------------------------------------
 mpfr_inits2 (hz.iFloatBits, t, tOver2Pi, T, Incr, N, P, Temp1, 
 		Main, Remainder, HardyZ, (mpfr_ptr) 0);
 mpfr_set_str (t, hz.tBuf, 10, MPFR_RNDN);
-mpfr_set_d (Incr, hz.dIncr, MPFR_RNDN);
+mpfr_set_str (Incr, hz.incrBuf, 10, MPFR_RNDN);
+mpfr_set_str (Temp1, MAX_T_STRING, 10, MPFR_RNDN);
+
+if(mpfr_cmp (t, Temp1) > 0) {	// improve this error checking?
+	printf("The t value entered is too large.  Cannot exceed 1.15e20 \n");
+	mpfr_set_ui (t, 0, MPFR_RNDN);
+	hz.iCount = 0;
+	}
 
 // -------------------------------------------------------------------
 // We loop hz.iCount times, processing 't' in the first (i = 1) loop.
@@ -98,38 +108,31 @@ for (i = 1; i <= hz.iCount; i++ ) {
 
 	// ---------------------------------------------------------------
 	// Compute N and P in-line 
+	// NOTE: Because N is (currently) an unsigned int (we assume 32-bit),
+	// then 0 <= N <= 4,294,967,295.  
+	// Thus, t cannot exceed about 1.15 * 10^{20} in the calcs below.
+	// (We checked the value of 't' above).
 	// ---------------------------------------------------------------	
 	mpfr_sqrt (T, tOver2Pi, MPFR_RNDN);
 	mpfr_modf (N, P, T, MPFR_RNDN);
 	uiN = (unsigned int) mpfr_get_ui (N, MPFR_RNDN);
-	dP  = mpfr_get_ld (P, MPFR_RNDN);
 	
 	// ---------------------------------------------------------------
 	// Compute the Remainder term.  The first step is to compute
 	// t/(2* pi)]^{-1/4}.  We use the "square root of the reciprocal
-	// then square root" method (unless iDebug % 2 == 0)
+	// then square root" method.  Former method:
+	//
+	//		mpfr_set_ld (Temp1, -0.25, MPFR_RNDN);
+	//		mpfr_pow (Temp1, tOver2Pi, Temp1, MPFR_RNDN);	
 	// ---------------------------------------------------------------	
-	if( !(hz.iDebug % 2 )) { // do this if iDebug is an even multiple of 2
-	mpfr_set_ld (Temp1, -0.25, MPFR_RNDN);
-	mpfr_pow (Temp1, tOver2Pi, Temp1, MPFR_RNDN);
-	}
-	else { // the default case
 	mpfr_rec_sqrt (Temp1, tOver2Pi, MPFR_RNDN);
 	mpfr_sqrt (Temp1, Temp1, MPFR_RNDN);
-	}	
+	
 	// ---------------------------------------------------------------
 	// We now call ComputeRemainder128, which uses a combination of
-	// quadmath (128-bit floats) plus MPFR. But, (if iDebug % 3 == 0), 
-	// we call ComputeRemainder, which uses only 80-bit long doubles.
+	// quadmath (128-bit floats) plus MPFR.
 	// ---------------------------------------------------------------		
-	if( !(hz.iDebug % 3 )) { // do this if iDebug is an even multiple of 3
-	tFraction = mpfr_get_ld (Temp1, MPFR_RNDN);
-	ldRemainder = ComputeRemainder(uiN, tFraction, dP);	
-	mpfr_set_ld (Remainder, ldRemainder,  MPFR_RNDN);
-	}
-	else { // the default case
 	ComputeRemainder128(&Remainder, P, Temp1, uiN, hz);
-	}	
 
 	// ---------------------------------------------------------------
 	// Now compute the Main term and add to Remainder to get HardyZ.
@@ -180,8 +183,7 @@ return(1);
 // -------------------------------------------------------------------
 int ComputeMain(mpfr_t *Result, mpfr_t t, unsigned int N, struct HZ hz)
 {
-mpfr_t		tOver2, PiOver8, LogOftOver2Pi;
-mpfr_t		Recip48t, Power3Term, Temp1, Temp2, Theta;
+mpfr_t	Theta;
 
 // -------------------------------------------------------------------
 // Step 0: Check the case N < 1 (nothing to do so return 0 in Result).
@@ -193,62 +195,20 @@ if(N < 1)
 	}
 
 // -------------------------------------------------------------------
-// First step: compute theta(t).  The formula from our book is:
-//	
-//	dTheta = ((t/2) * (log(t / (2 * M_PI_X)))) - M_PI_X/8 - t/2
-//		+ 1/(48 * t) + 7/(5760 * powl(t, 3));
-// ------------------------------------------------------------------
+// Step 1: Compute Theta.
+// -------------------------------------------------------------------
+mpfr_inits2 (hz.iFloatBits, Theta, (mpfr_ptr) 0);
+ComputeTheta(&Theta, t, hz);
+//mpfr_printf("Theta = %.40Rf\n", Theta);
 
 // -------------------------------------------------------------------
-// initialize all mpfr_t variables used in this first step
-// -------------------------------------------------------------------
-mpfr_inits2 (hz.iFloatBits, tOver2, PiOver8, LogOftOver2Pi, 
-	Recip48t, Power3Term, Temp1, Temp2, Theta, (mpfr_ptr) 0);
-
-// set tOver2
-mpfr_div_ui (tOver2, t, 2, MPFR_RNDN);
-
-// set LogOftOver2Pi
-mpfr_div (Temp1, tOver2, myPi, MPFR_RNDN);
-mpfr_log (LogOftOver2Pi, Temp1, MPFR_RNDN);
-
-// set PiOver8
-mpfr_div_ui (PiOver8, myPi, 8,  MPFR_RNDN);
-
-// set Recip48t
-mpfr_mul_ui (Temp1, t, 48, MPFR_RNDN);
-mpfr_ui_div (Recip48t, 1, Temp1, MPFR_RNDN);
-
-// -------------------------------------------------------------------
-// We now have the pre-calculations necessary to compute all terms of 
-// theta(t) (except for the Power3Term)
-// -------------------------------------------------------------------
-mpfr_mul (Theta, tOver2, LogOftOver2Pi, MPFR_RNDN);
-mpfr_sub (Theta, Theta, PiOver8, MPFR_RNDN);
-mpfr_sub (Theta, Theta, tOver2, MPFR_RNDN);
-mpfr_add (Theta, Theta, Recip48t, MPFR_RNDN);
-
-// -------------------------------------------------------------------
-// We calculate and add the Powers3Term ONLY IF if the computed value 
-// is large enough to matter (that is, only if t is not too large).
-// -------------------------------------------------------------------
-if(mpfr_cmp_ld (t, MAXT_POWER3_TERM) < 0)
-	{
-	mpfr_pow_ui (Temp1, t, 3, MPFR_RNDN);	
-	mpfr_mul_ui (Temp1, Temp1, 5760, MPFR_RNDN);	
-	mpfr_ui_div (Temp1, 1, Temp1, MPFR_RNDN);	
-	mpfr_mul_ui (Power3Term, Temp1, (unsigned long int) 7, MPFR_RNDN);
-	mpfr_add (Theta, Theta, Power3Term, MPFR_RNDN);
-//	mpfr_printf("Power3Term = %.40Rf\n", Power3Term);
-	}
-
-// -------------------------------------------------------------------
-// Second step: loop n = 1 to N.  We will handle the n = 1 and
+// Step 2: loop n = 1 to N.  We will handle the n = 1 and
 // n = 2 cases separately before entering the loop.
 // ------------------------------------------------------------------
+mpfr_t	Temp1, Temp2;
 mpfr_t	Main, RecipSqrtn, CosArg, CosCalc, FullTerm, LognMinusOne;
 
-mpfr_inits2 (hz.iFloatBits, 
+mpfr_inits2 (hz.iFloatBits, Temp1, Temp2, 
 	Main, RecipSqrtn, CosArg, CosCalc, FullTerm, LognMinusOne, (mpfr_ptr) 0);
 
 // -------------------------------------------------------------------
@@ -266,25 +226,15 @@ mpfr_cos (Main, Theta, MPFR_RNDN);
 // -------------------------------------------------------------------
 if(N >= 2)  
 	{
-	mpfr_sqrt_ui (Temp1, 2, MPFR_RNDN);
-	mpfr_ui_div (RecipSqrtn, 1, Temp1, MPFR_RNDN);
-	mpfr_mul (Temp1, t, myLog2, MPFR_RNDN);
-	mpfr_sub (CosArg, Theta, Temp1, MPFR_RNDN);
-
-if( hz.iDebug % 5) { // do this unless iDebug is an even multiple of 5
-	//#########################################################################################	
-	//----------------------------------------------------------------
-	// divide CosArg by 2 pi and keep the remainder
-	// Or, should we just let mpfr_cos do the same thing?
-	//----------------------------------------------------------------
-	mpfr_fmod (CosArg, CosArg, my2Pi, MPFR_RNDN);
-	//#########################################################################################	
-	}
-
-	mpfr_cos (Temp1, CosArg, MPFR_RNDN);
+	mpfr_set_ui (Temp1, 2, MPFR_RNDN);
+	mpfr_rec_sqrt (RecipSqrtn, Temp1, MPFR_RNDN);	// sqrt(1/2)
+	mpfr_mul (Temp1, t, myLog2, MPFR_RNDN);			// t * log 2
+	mpfr_sub (CosArg, Theta, Temp1, MPFR_RNDN);		// theta - [t * log 2]
+	mpfr_fmod (CosArg, CosArg, my2Pi, MPFR_RNDN);	// CosArg % 2Pi = OPTIONAL
+	mpfr_cos (Temp1, CosArg, MPFR_RNDN);			// Temp1 = cos(CosArg)
 	mpfr_mul (FullTerm, RecipSqrtn, Temp1, MPFR_RNDN);
 	mpfr_add (Main, Main, FullTerm, MPFR_RNDN);
-	mpfr_set (LognMinusOne, myLog2, MPFR_RNDN); // for Version 3, below
+	mpfr_set (LognMinusOne, myLog2, MPFR_RNDN); 	// for Version 2, below
 	}
 	
 // -------------------------------------------------------------------
@@ -292,8 +242,7 @@ if( hz.iDebug % 5) { // do this unless iDebug is an even multiple of 5
 // -------------------------------------------------------------------
 for (unsigned int n = 3; n <= N; ++n) {
 	// ---------------------------------------------------------------
-	// We will need an mpfr_t version of n in multiple places, so
-	// save in Temp1
+	// We need an mpfr_t version of n, so save in Temp1
 	// ---------------------------------------------------------------	
 	mpfr_set_ui (Temp1, n, MPFR_RNDN);
 	
@@ -302,42 +251,42 @@ for (unsigned int n = 3; n <= N; ++n) {
 	// ---------------------------------------------------------------	
 	mpfr_rec_sqrt (RecipSqrtn, Temp1, MPFR_RNDN);	
 
-if( !(hz.iDebug % 7 )) { // do this if iDebug is an even multiple of 7
-	//#########################################################################################	
-	// ---------------------------------------------------------------
-	// Second, compute the argument to the cosine term. (Version 1)
-	// That is, CosArg = [theta(t) - t log n].  
-	// Then (further below) compute cos(CosArg).
-	// ---------------------------------------------------------------	
-	mpfr_log (Temp2, Temp1, MPFR_RNDN);
-	mpfr_mul (Temp2, t, Temp2, MPFR_RNDN); 
-	mpfr_sub (CosArg, Theta, Temp2, MPFR_RNDN); 	
-	//#########################################################################################
-	}
+	if(DebugMode(hz, COS_ARG_NOT_SAVED)) { // do NOT do Version 2 (saving CosArg, etc.)
+		//#####################################################################################	
+		// ---------------------------------------------------------------
+		// Second, compute the argument to the cosine term. (Version 1)
+		// That is, CosArg = [theta(t) - t log n].  
+		// Then (further below) compute cos(CosArg).
+		// ---------------------------------------------------------------	
+		mpfr_log (Temp2, Temp1, MPFR_RNDN);			// log n
+		mpfr_mul (Temp2, t, Temp2, MPFR_RNDN); 		// t * log n
+		mpfr_sub (CosArg, Theta, Temp2, MPFR_RNDN); // theta(t) - [t * log n]	
+		//#####################################################################################
+		}
 	else { // this is the default case:
-	//#########################################################################################	
-	// ---------------------------------------------------------------
-	// Second, compute the argument to the cosine term. (Version 2)
-	// We have saved CosArg(of n-1) and log(n-1), allowing:  
-	// CosArg(of n) = CosArg(of n-1) + (t * [log(n-1) - log(n)])
-	// ---------------------------------------------------------------	
-	mpfr_log (Temp1, Temp1, MPFR_RNDN); 				// this sets Temp1 to log(n)
-	mpfr_sub (Temp2, LognMinusOne, Temp1, MPFR_RNDN); 	// Temp2 = log(n-1) - log(n)
-	mpfr_mul (Temp2, t, Temp2, MPFR_RNDN); 				// t * [log(n-1) - log(n)]
-	mpfr_add (CosArg, CosArg, Temp2, MPFR_RNDN); 		// Add Temp 2 to CosArg(of n-1)
-	mpfr_set (LognMinusOne, Temp1, MPFR_RNDN); 			// update for the next 'n' - use "swap"?
-	//#########################################################################################
-	}
+		//#####################################################################################	
+		// ---------------------------------------------------------------
+		// Second, compute the argument to the cosine term. (Version 2)
+		// We have saved CosArg(of n-1) and log(n-1), allowing:  
+		// CosArg(of n) = CosArg(of n-1) + (t * [log(n-1) - log(n)])
+		// ---------------------------------------------------------------	
+		mpfr_log (Temp1, Temp1, MPFR_RNDN); 				// this sets Temp1 to log(n)
+		mpfr_sub (Temp2, LognMinusOne, Temp1, MPFR_RNDN); 	// Temp2 = log(n-1) - log(n)
+		mpfr_mul (Temp2, t, Temp2, MPFR_RNDN); 				// Temp2 = t * [log(n-1) - log(n)]
+		mpfr_add (CosArg, CosArg, Temp2, MPFR_RNDN); 		// CosArg = Temp2 + CosArg(of n-1)
+		mpfr_set (LognMinusOne, Temp1, MPFR_RNDN); 			// update for the next 'n' - use "swap"?
+		//#####################################################################################
+		}
 
-if( hz.iDebug % 5) { // do this unless iDebug is an even multiple of 5
-	//#########################################################################################	
-	//----------------------------------------------------------------
-	// divide CosArg by 2 pi and keep the remainder
-	// Or, should we just let mpfr_cos do the same thing?
-	//----------------------------------------------------------------
-	mpfr_fmod (CosArg, CosArg, my2Pi, MPFR_RNDN);
-	//#########################################################################################	
-	}
+	if(!DebugMode(hz, COS_ARG_2PI)) { // skip this if in Debug Mode
+		//#####################################################################################	
+		//----------------------------------------------------------------
+		// divide CosArg by 2 pi and keep the remainder
+		// Or, should we just let mpfr_cos do the same thing?
+		//----------------------------------------------------------------
+		mpfr_fmod (CosArg, CosArg, my2Pi, MPFR_RNDN);
+		//#####################################################################################	
+		}
 
 	//----------------------------------------------------------------
 	// We are now ready to compute the cosine value = CosCalc.
@@ -352,19 +301,15 @@ if( hz.iDebug % 5) { // do this unless iDebug is an even multiple of 5
 	} // end of for loop
 
 // -------------------------------------------------------------------
-// We have calculated Main.  Now, multiply by 2 and then convert
-// to a long double (which will be the return value)
+// We have calculated Main.  Now, multiply by 2 and return result.
 // -------------------------------------------------------------------
-mpfr_mul_2ui (Main, Main, 1, MPFR_RNDN);
-mpfr_set (*Result, Main, MPFR_RNDN);
+mpfr_mul_2ui (*Result, Main, 1, MPFR_RNDN);
 
 // -------------------------------------------------------------------
 // Free the space used by the local mpfr (constant) variables
 // -------------------------------------------------------------------	
-mpfr_clears ( tOver2, PiOver8, LogOftOver2Pi, 
-	Recip48t, Power3Term, Temp1, Temp2, Theta, (mpfr_ptr) 0);
-mpfr_clears (Main, RecipSqrtn, CosArg, CosCalc, FullTerm, LognMinusOne, (mpfr_ptr) 0);
+mpfr_clears (Theta, Temp1, Temp2,  
+  Main, RecipSqrtn, CosArg, CosCalc, FullTerm, LognMinusOne, (mpfr_ptr) 0);
 
 return(1);
 }
-

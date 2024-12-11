@@ -1,5 +1,5 @@
 // -------------------------------------------------------------------
-// Program last modified November 23, 2024. 
+// Program last modified December 10, 2024. 
 // Copyright (c) 2024 Terrence P. Murphy
 // MIT License -- see hardyZ.c for details.
 // -------------------------------------------------------------------
@@ -133,7 +133,7 @@ int ComputeRemainder128(mpfr_t *Result, mpfr_t P, mpfr_t tFraction, unsigned int
 {
 mpfr_t		Factor, Total, Temp1, Temp2;
 __float128	P128, AdjP128;
-__float128	PowersP[40];
+__float128	PowersP[NUM_POWERS_P];
 
 // -------------------------------------------------------------------
 // initialize all mpfr_t variables
@@ -144,28 +144,26 @@ mpfr_inits2 (hz.iFloatBits, Factor, Total, Temp1, Temp2, (mpfr_ptr) 0);
 // Compute FACTOR = tFraction * (-1)^{N - 1}
 // -------------------------------------------------------------------
 mpfr_set (Factor, tFraction, MPFR_RNDN);
-if(N % 2 == 0)
-	{
-	mpfr_neg (Factor, tFraction, MPFR_RNDN);
+if(N % 2 == 0) {
+	mpfr_neg (Factor, Factor, MPFR_RNDN);
 	}
 
 // -------------------------------------------------------------------
-// Convert P to __float128
-// -------------------------------------------------------------------
-P128 = mpfr_get_float128 (P, MPFR_RNDN);
-
-// -------------------------------------------------------------------
 // We next compute the SUM. Before we start, we must deal with P.
+// For now, we are using the gcc "quadmath" 128-bit float for P
+// instead of a mpfr_t variable, so we convert P to P128.
+//
 // Because we are using Haselgrove's table of coefficients, we need
-// to adjust P, with AdjP128 = 1 - (2 * P). Also, in the formula, we 
-// will need to compute AdjP128 to powers 0 through 39, most of them 
+// to adjust P128, with AdjP128 = 1 - (2 * P128). Also, in the formula, 
+// we will need to compute AdjP128 to powers 0 through 39, most of them 
 // multiple times.  For efficiency, we will do the computations 
 // once and store the results for later use.
 // -------------------------------------------------------------------
+P128 = mpfr_get_float128 (P, MPFR_RNDN);
 AdjP128 	= (1 - (2 * P128));
 PowersP[0] 	= 1;		// initialize the '0' slot; AdjP128^{0} = 1
 
-for(unsigned int k=1; k <= 39; k++) {
+for(unsigned int k=1; k < NUM_POWERS_P; k++) {
 	PowersP[k] = PowersP[k-1] * AdjP128;
 	}
 
@@ -200,7 +198,9 @@ mpfr_clears (Factor, Total, Temp1, Temp2, (mpfr_ptr) 0);
 return(1);
 }
 
-
+// -------------------------------------------------------------------
+// For testing, this does a printf of a __float128 value.
+// -------------------------------------------------------------------
 void Show128(__float128 x)
 {
 char buf[128];

@@ -1,5 +1,5 @@
 // -------------------------------------------------------------------
-// Program last modified November 23, 2024. 
+// Program last modified December 10, 2024. 
 // -------------------------------------------------------------------
 
 /*
@@ -46,14 +46,13 @@ int main( int argc, char *argv[] )
 {
 int			c, i;
 const char  sDot[] = "."; 
-char *		end;
+//char *		end;
 struct HZ 	hz;
 
 hz.bVerbose 	= false;
 hz.bSeconds		= false;
-hz.t			= 0;
 hz.iCount 		= 1;
-hz.iDebug		= 211; // (2 * 3 * 5 * 7) + 1
+hz.iDebug		= 2311; // (2 * 3 * 5 * 7 * 11) + 1
 hz.iActualDPt 	= -1;
 hz.iActualDPi 	= 0;
 hz.iOutputDPt 	= 0;
@@ -62,12 +61,8 @@ hz.iFloatBits	= MY_DEFAULT_PRECISION;
 hz.iWholeDt 	= 0;
 hz.iWholeDi 	= 0;
 hz.iWholeD 		= 0;
-hz.dIncr 		= 1;
 
-//printf("Size of unsigned int: %zu bytes\n", sizeof(unsigned int));
-//printf("Size of unsigned long int: %zu bytes\n", sizeof(unsigned long int));
-//printf("Size of unsigned long long: %zu bytes\n", sizeof(unsigned long long));
-
+strcpy(hz.incrBuf, "1");
 
 fprintf(stderr, "%s", sCopyright);
 if(argc == 1) {
@@ -89,9 +84,8 @@ while ((c = getopt (argc, argv, "t:i:c:z:b:d:hvs")) != -1)
 			hz.bSeconds = true;
 			break;			
 		case 't':
-			hz.t = strtold(optarg, &end);
 			hz.iActualDPt = strCheckAndCount(optarg);
-			if(!(hz.t > 0.0) || hz.iActualDPt == -1 || strlen(optarg) > (T_BUF_SIZE -2)){
+			if(hz.iActualDPt == -1 || strlen(optarg) > (T_BUF_SIZE -2)){
 				printf("Invalid argument to -t \n");
 				return(EXIT_FAILURE);
 				}
@@ -99,12 +93,12 @@ while ((c = getopt (argc, argv, "t:i:c:z:b:d:hvs")) != -1)
 			hz.iWholeDt = strcspn(optarg, sDot);
 			break;
 		case 'i':
-			hz.dIncr = strtod(optarg, &end);
 			hz.iActualDPi = strCheckAndCount(optarg);
-			if(!(hz.dIncr > 0.0) || hz.iActualDPi == -1){
+			if(hz.iActualDPi == -1 || strlen(optarg) > (INCR_BUF_SIZE -2)){
 				printf("Invalid argument to -i \n");
 				return(EXIT_FAILURE);
 				}
+			strcpy(hz.incrBuf, optarg);
 			hz.iWholeDi = strcspn(optarg, sDot);
 			break;
 		case 'c':
@@ -116,7 +110,7 @@ while ((c = getopt (argc, argv, "t:i:c:z:b:d:hvs")) != -1)
 			break;
 		case 'd':
 			i = atoi(optarg);
-			if( i < 2 || i > 210 ){
+			if( i < 2 || i > DEBUG_MAX_VALUE ){
 				printf("Invalid argument to -d \n");
 				return(EXIT_FAILURE);
 				}
@@ -151,9 +145,9 @@ hz.iWholeD 		= hz.iWholeDt > hz.iWholeDi ? hz.iWholeDt : hz.iWholeDi;
 
 // -------------------------------------------------------------------
 // We have finished validating the command line parameters.  Now compute 
-// and printf our HardyZ results.
+// and printf our HardyZ results.  Time the seconds it takes to do the
+// computations if the user enters the -s command line parameter.
 // -------------------------------------------------------------------
-
 if(hz.bSeconds){
 	clock_t	t;
 	double 	time_taken;
@@ -177,10 +171,20 @@ return(EXIT_SUCCESS);
 // -------------------------------------------------------------------
 int strCheckAndCount(const char *str)
 {
-const char * ptr = strchr(str, '.'); // point to decimmal point, if any
+const char * ptr       = strchr(str, '.'); // point to decimmal point, if any
 const char   sNumDot[] = "0123456789."; 
+const char   sNumNZ[]  = "123456789"; 
+int  		NonZero    = 0;
+int	i;
 
-if(strspn(str, sNumDot) != strlen(str) || strchr(str, '.') != strrchr(str, '.')) {
+for (i=0; !NonZero && i < 9; i++) {
+	if(strchr(str, sNumNZ[i]) != NULL) {
+		NonZero = 1;
+		}
+	}
+
+if(!NonZero || strspn(str, sNumDot) != strlen(str) 
+	   || strchr(str, '.') != strrchr(str, '.')) {
 	return(-1); 		// either invalid char or too may '.'
 	}
 if(!ptr) return(0); 	// no decimal point so no decimal digits
@@ -216,8 +220,13 @@ if(iValue % 64 != 0 || iValue < 128 || iValue > 1024){
 return(iValue);
 }
 
-
-// printf("Size of unsigned int: %zu bytes\n", sizeof(unsigned int));
-// printf("Size of unsigned long int: %zu bytes\n", sizeof(unsigned long int));
-// printf("FloatBits = %d \n", hz.iFloatBits);
-// printf("iWholeDt = %d, iWholeD = %d, iOutputDPt = %d, \n", hz.iWholeDt, hz.iWholeD, hz.iOutputDPt);
+// -------------------------------------------------------------------
+// We check whether the value passed on the command line (using the
+// -d debug parameter, and saved in hz.iDebug) "matches" the DebugNum 
+// parameter passed in here.  There is a "match" if there is no 
+// remainder when you divide hz.iDebug by Debug Num.
+// -------------------------------------------------------------------
+bool DebugMode(struct HZ hz, int DebugNum)
+{
+return(hz.iDebug % DebugNum == 0 ? true : false);
+}

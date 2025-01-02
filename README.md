@@ -28,12 +28,16 @@ This distribution consists of the following files:
   * [Hardyz.c][hardyz-c-link]. The `main` function entry pont for our program.  This source code file is 
   quite straightforward. We validate the user’s command line input, save their
   choices and then call the `ComputeHardyZ` function.
+
+  * [remainder256.c][remainder256-c-link]. This source code file provides the 
+  `ComputeRemainder256` function that computes the remainder term *R(4)*.
+  We use the Gabcke table of power series coefficients and the **MPFR** library (set to 256-bit by default and changeable by the `-b` command line
+  parameter) for other floating point calculations.
  
-  * [remainder128.c][remainder128-c-link]. This source code file provides the 
-  `ComputeRemainder128` function that computes the remainder term *R(4)*.
-  We use the **gcc** quadmath 128-bit floating point library for the Haselgrove
-  coefficients, and the **MPFR** library (set to 256-bit by default and changeable by the `-b` command line
-  parameter) for all other floating point calculations.
+  * [remainder128.c][remainder128-c-link]. The functions in this file are called only when you use the ”-d” debug switch with a debug value
+divisible by 2. In that case, the “remainder” term 𝑅 is computed by calling the ComputeRemainder128
+ function.  We use the **gcc** quadmath 128-bit floating point library for the Haselgrove
+  coefficients, and the **MPFR** library for all other floating point calculations.
  
   * [remainder.c][remainder-c-link]. Here we provide an alternate function, `ComputeRemainder`, for computing the remainder term.  Like 
 the `ComputeRemainder128` function, we compute *R(4)* using the Haselgrove table of power series coefficients.
@@ -74,6 +78,7 @@ See their respective links for theirs terms of license.
 [license-link]:			https://github.com/terry98004/HardyZ/blob/master/license.txt
 [readme-link]:			https://github.com/terry98004/HardyZ/blob/master/README.md
 [hardyz-c-link]:		https://github.com/terry98004/HardyZ/blob/master/hardyz.c
+[remainder256-c-link]:	https://github.com/terry98004/HardyZ/blob/master/remainder256.c
 [remainder128-c-link]:	https://github.com/terry98004/HardyZ/blob/master/remainder128.c
 [remainder-c-link]:		https://github.com/terry98004/HardyZ/blob/master/remainder.c
 [computemain-c-link]:	https://github.com/terry98004/HardyZ/blob/master/computemain.c

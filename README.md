@@ -43,16 +43,18 @@ divisible by 2. In that case, the “remainder” term 𝑅 is computed by calli
 the `ComputeRemainder128` function, we compute *R(4)* using the Haselgrove table of power series coefficients.
 The difference is that, here, we use the **gcc** compiler's built-in **long double** floating point type (with 80-bit precision on our computer system).
 We no longer link to this file.  It is here because the source code in this file more clearly shows the *R(4)* algorithm for computing the remainder term.  
-In the `remainder128.c` file, the algorithm is slightly more obscure due to the code implementing the `quadmath` and MPFR floating point libraries.
-Our testing showed a slight accuracy improvement (and a minimal time cost) when using `ComputeRemainder128`.
+Our testing showed a slight accuracy improvement (and a minimal time cost) when using `ComputeRemainder256`.
+
+  * [buildcoeff.c][buildcoeff-c-link]. This source code file builds an **MPFR** version of the Gabcke power series coefficients as part of the
+overall task of initializing the **MPFR** floating point system.
 
   * [computetheta.c][computetheta-c-link]. This source code file uses the MPFR floating point library to compute the
-    theta term in the Riemann-Siegel Formula.  This source code was originally in the `computemain.c` file.  
+    theta term in the Riemann-Siegel Formula. 
  
   * [computemain.c][computemain-c-link]. This source code file is “central control” for computing 
   *Z(t)* values. The `ComputeHardyZ` function is the entry point. In that function, we
-  do needed initialization of the **MPFR** floating point system, call either `ComputeRemainder128`
-  or `ComputeRemainder`, call the `ComputeMain` function (found in this source code file), and 
+  do needed initialization of the **MPFR** floating point system, call either `ComputeRemainder256`
+  or `ComputeRemainder128`, call the `ComputeMain` function (found in this source code file), and 
   print the results to `stdout`.
   
   * [hardyz.h][hardyz-h-link]. The is the only (local) include file for the program.  
@@ -81,6 +83,7 @@ See their respective links for theirs terms of license.
 [remainder256-c-link]:	https://github.com/terry98004/HardyZ/blob/master/remainder256.c
 [remainder128-c-link]:	https://github.com/terry98004/HardyZ/blob/master/remainder128.c
 [remainder-c-link]:		https://github.com/terry98004/HardyZ/blob/master/remainder.c
+[buildcoeff-c-link]:		https://github.com/terry98004/HardyZ/blob/master/buildcoeff.c
 [computemain-c-link]:	https://github.com/terry98004/HardyZ/blob/master/computemain.c
 [computetheta-c-link]:	https://github.com/terry98004/HardyZ/blob/master/computetheta.c
 [hardyz-h-link]:		https://github.com/terry98004/HardyZ/blob/master/hardyz.h

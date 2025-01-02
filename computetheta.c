@@ -1,6 +1,6 @@
 // -------------------------------------------------------------------
-// Program last modified December 10, 2024. 
-// Copyright (c) 2024 Terrence P. Murphy
+// Program last modified January 1, 2025. 
+// Copyright (c) 2024-2025 Terrence P. Murphy
 // MIT License -- see hardyz.c for details.
 // -------------------------------------------------------------------
 #include "hardyz.h"
@@ -11,7 +11,7 @@ extern mpfr_t	myPi, my2Pi;
 // We compute \theta(t) as used in the Riemann-Siegel formula.  
 // The formula from our book is:
 //	
-// Theta = ((t/2) * (log(t / (2 * M_PI_X)))) - M_PI_X/8 - t/2
+// Theta = ((t/2) * (log(t / (2 * PI)))) - PI/8 - t/2
 //		+ 1/(48 * t) + 7/(5760 * powl(t, 3));
 //
 // Using the variable names below, the formula is:
@@ -84,7 +84,6 @@ mpfr_clears ( tOver2, PiOver8, LogOftOver2Pi,
 
 return(1);
 }
-
 
 // -------------------------------------------------------------------
 // In computing theta, there is a point where we multiply a large

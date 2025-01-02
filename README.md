@@ -35,14 +35,15 @@ This distribution consists of the following files:
   coefficients, and the **MPFR** library (set to 256-bit by default and changeable by the `-b` command line
   parameter) for all other floating point calculations.
  
-  * [remainder.c][remainder-c-link]. This source code file provides the 
-  `ComputeRemainder` function, an alternate function for computing the remainder term *R(4)*.
-  The difference: here we use the **gcc** compiler’s built-in long double floating
-  point type (with 80-bit precision on our computer system).
-  Our testing showed no meaningful increase in accuracy when using `ComputeRemainder128`.
-  However, the time cost of using `ComputeRemainder128` was very minimal. For that reason,
-  we default to using `ComputeRemainder128`. To test using `ComputeRemainder` instead, use the `-d`
-  command line parameter, setting the value to any positive integer that is both divisible by 3 and less than 211.
+  * [remainder.c][remainder-c-link]. Here we provide an alternate function, `ComputeRemainder`, for computing the remainder term.  Like 
+the `ComputeRemainder128` function, we compute *R(4)* using the Haselgrove table of power series coefficients.
+The difference is that, here, we use the **gcc** compiler's built-in **long double** floating point type (with 80-bit precision on our computer system).
+We no longer link to this file.  It is here because the source code in this file more clearly shows the *R(4)* algorithm for computing the remainder term.  
+In the `remainder128.c` file, the algorithm is slightly more obscure due to the code implementing the `quadmath` and MPFR floating point libraries.
+Our testing showed a slight accuracy improvement (and a minimal time cost) when using `ComputeRemainder128`.
+
+  * [computetheta.c][computetheta-c-link]. This source code file uses the MPFR floating point library to compute the
+    theta term in the Riemann-Siegel Formula.  This source code was originally in the `computemain.c` file.  
  
   * [computemain.c][computemain-c-link]. This source code file is “central control” for computing 
   *Z(t)* values. The `ComputeHardyZ` function is the entry point. In that function, we
@@ -76,6 +77,7 @@ See their respective links for theirs terms of license.
 [remainder128-c-link]:	https://github.com/terry98004/HardyZ/blob/master/remainder128.c
 [remainder-c-link]:		https://github.com/terry98004/HardyZ/blob/master/remainder.c
 [computemain-c-link]:	https://github.com/terry98004/HardyZ/blob/master/computemain.c
+[computetheta-c-link]:	https://github.com/terry98004/HardyZ/blob/master/computetheta.c
 [hardyz-h-link]:		https://github.com/terry98004/HardyZ/blob/master/hardyz.h
 [makehardyz-bat-link]:	https://github.com/terry98004/HardyZ/blob/master/makehardyz.bat
 [hardyz-pdf-link]:		https://github.com/terry98004/HardyZ/blob/master/hardyz.pdf

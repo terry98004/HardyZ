@@ -1,5 +1,5 @@
 // -------------------------------------------------------------------
-// Program last modified December 10, 2024. 
+// Program last modified December 13, 2024. 
 // Copyright (c) 2024 Terrence P. Murphy
 // MIT License -- see hardyZ.c for details.
 // -------------------------------------------------------------------
@@ -15,6 +15,9 @@
 // We use the first 20 non-zero coefficients for C0 and C1 the first
 // 19 for C2, the first 17 for C3 and the first 16 for C4. 
 // (see "CjCoeffCount128").
+//
+// With a leading term of 0, the __float128 data type should be 
+// accurate to about 36 decimal places.
 // -------------------------------------------------------------------
 
 const unsigned int	CjCoeffCount128[5] = {20, 20, 19, 17, 16};

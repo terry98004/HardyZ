@@ -58,7 +58,7 @@ const long double	CjCoeff[5][20] = {
 -0.00000000000012120,
 -0.00000000000001458,
  0.00000000000000029,
- 0.00000000000000009},
+ 0.00000000000000009},	
  
 { 0.005188542830293,
   0.000309465838807,
@@ -179,4 +179,3 @@ return(dFactor * dTotal);
 //printf("Size of unsigned long int: %zu bytes\n", sizeof(unsigned long int));				4 bytes
 //printf("Size of unsigned long long int: %zu bytes\n", sizeof(unsigned long long int));	8 bytes
 
-// mpfr_printf("%.40Rf \n", Power3Term);

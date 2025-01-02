@@ -1,6 +1,6 @@
 // -------------------------------------------------------------------
-// Program last modified December 10, 2024. 
-// Copyright (c) 2024 Terrence P. Murphy
+// Program last modified January 1, 2025. 
+// Copyright (c) 2024-2025 Terrence P. Murphy
 // MIT License -- see hardyz.c for details.
 // -------------------------------------------------------------------
 #include "hardyz.h"
@@ -25,6 +25,15 @@ mpfr_set_default_prec (hz.iFloatBits);
 mpfr_inits2 (hz.iFloatBits, myPi, my2Pi, myLog2, (mpfr_ptr) 0);
 
 // -------------------------------------------------------------------
+// If we are in "full MPFR" mode for the remainder term, then
+// initialize the MPFR variables that will hold the coefficients.
+// -------------------------------------------------------------------
+if(!DebugMode(hz, COEFF_128)) {
+	InitCoeffMPFR(hz.iFloatBits);	
+	BuildCoefficientsMPFR(hz);
+	}
+
+// -------------------------------------------------------------------
 // Set the value of the global mpfr (constant) variables
 // -------------------------------------------------------------------
 mpfr_const_pi (myPi, MPFR_RNDN); 
@@ -33,17 +42,24 @@ mpfr_const_log2 (myLog2, MPFR_RNDN);
 return(0);
 }
 
-
 // -------------------------------------------------------------------
 // We call this function after we are done using all MPFR functions.  
 // We clear the remaining memory and any cache used by MPFR. 
 // -------------------------------------------------------------------
-int CloseMPFR(void)
+int CloseMPFR(struct HZ hz)
 {
 // -------------------------------------------------------------------
 // Free the space used by the global mpfr (constant) variables
 // -------------------------------------------------------------------
 mpfr_clears (myPi, my2Pi, myLog2, (mpfr_ptr) 0);
+
+// -------------------------------------------------------------------
+// If we are in "full MPFR" mode for the remainder term, then
+// free the MPFR variables that held the coefficients.
+// -------------------------------------------------------------------
+if(!DebugMode(hz, COEFF_128)) {
+	CloseCoeffMPFR();
+	}
 
 // -------------------------------------------------------------------
 // Clear the cache used by MPFR.
@@ -88,7 +104,7 @@ mpfr_set_str (Temp1, MAX_T_STRING, 10, MPFR_RNDN);
 if(mpfr_cmp (t, Temp1) > 0) {	// improve this error checking?
 	printf("The t value entered is too large.  Cannot exceed 1.15e20 \n");
 	mpfr_set_ui (t, 0, MPFR_RNDN);
-	hz.iCount = 0;
+	hz.iCount = 0;	// this values skips the next for loop.
 	}
 
 // -------------------------------------------------------------------
@@ -129,11 +145,22 @@ for (i = 1; i <= hz.iCount; i++ ) {
 	mpfr_sqrt (Temp1, Temp1, MPFR_RNDN);
 	
 	// ---------------------------------------------------------------
-	// We now call ComputeRemainder128, which uses a combination of
-	// quadmath (128-bit floats) plus MPFR.
+	// We now call  ComputeRemainder256 (uses MPFR), unless a debug flag
+	// is set to call ComputeRemainder128 (uses a combination of
+	// 128-bit quadmath plus MPFR).
 	// ---------------------------------------------------------------		
-	ComputeRemainder128(&Remainder, P, Temp1, uiN, hz);
+	if(!DebugMode(hz, COEFF_128)) {
+		ComputeRemainder256(&Remainder, P, Temp1, uiN, hz);
+		}
+	else
+		{
+		ComputeRemainder128(&Remainder, P, Temp1, uiN, hz);
+		}
 
+	if(DebugMode(hz, PRINT_REMAINDER)) {
+		mpfr_printf("Remainder R(4): %.50Rf \n", Remainder);
+		}
+	
 	// ---------------------------------------------------------------
 	// Now compute the Main term and add to Remainder to get HardyZ.
 	// ---------------------------------------------------------------	
@@ -159,7 +186,7 @@ for (i = 1; i <= hz.iCount; i++ ) {
 // -------------------------------------------------------------------
 mpfr_clears (t, tOver2Pi, T, Incr, N, P, Temp1, 
 		Main, Remainder, HardyZ, (mpfr_ptr) 0);
-CloseMPFR();
+CloseMPFR(hz);
 return(1);
 }
 
@@ -278,7 +305,7 @@ for (unsigned int n = 3; n <= N; ++n) {
 		//#####################################################################################
 		}
 
-	if(!DebugMode(hz, COS_ARG_2PI)) { // skip this if in Debug Mode
+	if(!DebugMode(hz, COS_ARG_2PI)) { // skip this if indicated debug flag is set
 		//#####################################################################################	
 		//----------------------------------------------------------------
 		// divide CosArg by 2 pi and keep the remainder

@@ -32,7 +32,7 @@ This distribution consists of the following files:
   * [remainder256.c][remainder256-c-link]. This source code file provides the 
   `ComputeRemainder256` function that computes the remainder term *R(4)*.
   We use the Gabcke table of power series coefficients and the **MPFR** library (set to 256-bit by default and changeable by the `-b` command line
-  parameter) for other floating point calculations.
+  parameter) for floating point calculations.
  
   * [remainder128.c][remainder128-c-link]. The functions in this file are called only when you use the ”-d” debug switch with a debug value
 divisible by 2. In that case, the “remainder” term 𝑅 is computed by calling the ComputeRemainder128

@@ -1,5 +1,5 @@
 // -------------------------------------------------------------------
-// Program last modified December 10, 2024. 
+// Program last modified January 3, 2025. 
 // -------------------------------------------------------------------
 
 /*
@@ -38,7 +38,7 @@ const char sUsage[] = "Command Line Parameters\n" \
  "-s			Report the total seconds taken to compute the Hardy Z values.\n"\
  "-v			Verbose report (otherwise CSV only)."; 
 
-const char sCopyright[] = "Copyright 2024 by Terrence P. Murphy." \
+const char sCopyright[] = "Copyright 2024-2025 by Terrence P. Murphy." \
 " Licensed under MIT License.\n\n"; 
 
 

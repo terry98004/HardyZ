@@ -1,5 +1,5 @@
 // -------------------------------------------------------------------
-// Program last modified January 1, 2025. 
+// Program last modified August 9, 2025. 
 // Copyright (c) 2024-2025 Terrence P. Murphy
 // MIT License -- see hardyz.c for details.
 // -------------------------------------------------------------------
@@ -22,7 +22,7 @@ extern mpfr_t	myPi, my2Pi;
 //    Theta = tOver2 * [LogOftOver2Pi - 1] 
 //         + Recip48t - PiOver8 + Power3Term
 // -------------------------------------------------------------------
-int ComputeTheta(mpfr_t *Theta, mpfr_t t, struct HZ hz)
+int ComputeTheta(mpfr_t *Theta, mpfr_t t, int iFloatBits)	
 {
 mpfr_t		tOver2, PiOver8, LogOftOver2Pi;
 mpfr_t		Recip48t, Power3Term, Temp1, MinorTerms;
@@ -30,7 +30,7 @@ mpfr_t		Recip48t, Power3Term, Temp1, MinorTerms;
 // -------------------------------------------------------------------
 // initialize all mpfr_t variables used in computing Theta
 // -------------------------------------------------------------------
-mpfr_inits2 (hz.iFloatBits, tOver2, PiOver8, LogOftOver2Pi, 
+mpfr_inits2 (iFloatBits, tOver2, PiOver8, LogOftOver2Pi, 
 	Recip48t, Power3Term, Temp1, MinorTerms, (mpfr_ptr) 0);
 
 // set tOver2
@@ -73,7 +73,7 @@ if(mpfr_cmp (t, Temp1) < 0)
 // Now calculate the major term = tOver2 * [LogOftOver2Pi - 1]
 // -------------------------------------------------------------------
 mpfr_sub_ui (Temp1, LogOftOver2Pi, 1, MPFR_RNDN);
-ThetaAxB (&Temp1, tOver2, Temp1, hz);
+ThetaAxB (&Temp1, tOver2, Temp1, iFloatBits);
 mpfr_add (*Theta, Temp1, MinorTerms, MPFR_RNDN);	
 
 // -------------------------------------------------------------------
@@ -95,16 +95,16 @@ return(1);
 // in place of:
 //				mpfr_mul (*Result, Big, Small, MPFR_RNDN);
 // -------------------------------------------------------------------
-int ThetaAxB(mpfr_t *Result, mpfr_t Big, mpfr_t Small, struct HZ hz)
-{
+int ThetaAxB(mpfr_t *Result, mpfr_t Big, mpfr_t Small, int iFloatBits)
+{											
 mpfr_t	FracBig2Pi, IntSmall, FracSmall, Temp1, Temp2;
 
-mpfr_inits2 (hz.iFloatBits, FracBig2Pi, IntSmall, FracSmall, 
+mpfr_inits2 (iFloatBits, FracBig2Pi, IntSmall, FracSmall, 
    Temp1, Temp2, (mpfr_ptr) 0);
 
 //----------------------------------------------------------------
 // Divide Big by 2 pi and keep the fractional part.
-// Obtain the integer and fractional partt of Small.
+// Obtain the integer and fractional part of Small.
 //----------------------------------------------------------------
 mpfr_fmod (FracBig2Pi, Big, my2Pi, MPFR_RNDN);
 mpfr_modf (IntSmall, FracSmall, Small, MPFR_RNDN);

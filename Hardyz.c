@@ -1,5 +1,5 @@
 // -------------------------------------------------------------------
-// Program last modified January 3, 2025. 
+// Program last modified August 10, 2025. 
 // -------------------------------------------------------------------
 
 /*
@@ -31,14 +31,15 @@ const char sUsage[] = "Command Line Parameters\n" \
  "-t [positive number]	The t value for Z(t) - this parameter is required. (Digits and '.' only).\n" \
  "-i [positive number]	Amount to increment t (if checking multiple t values) - defaults to 1.\n" \
  "-c [positive integer]	Count of the number of t values to check - defaults to 1.\n" \
- "-z [positive integer]	Decimal points of Z(t) to show in report - defaults to 6.\n" \
+ "-z [positive integer]	Decimal points digits of Z(t) to show in report - defaults to 6.\n" \
  "-b [positive integer]	Floating point bits: 128 <= b <= 1024, divisible by 64 - defaults to 256.\n" \
  "-d [positive integer]	Used for debugging only.  Please disregard.\n" \
+ "-k [positive integer]	Number of threads to use - defaults to 1, maximum of 8.\n" \
  "-h			Show command line parameters.  All other parameters will be ignored.\n" \
  "-s			Report the total seconds taken to compute the Hardy Z values.\n"\
  "-v			Verbose report (otherwise CSV only)."; 
 
-const char sCopyright[] = "Copyright 2024-2025 by Terrence P. Murphy." \
+const char sCopyright[] = "Copyright 2025 by Terrence P. Murphy." \
 " Licensed under MIT License.\n\n"; 
 
 
@@ -46,7 +47,6 @@ int main( int argc, char *argv[] )
 {
 int			c, i;
 const char  sDot[] = "."; 
-//char *		end;
 struct HZ 	hz;
 
 hz.bVerbose 	= false;
@@ -61,6 +61,7 @@ hz.iFloatBits	= MY_DEFAULT_PRECISION;
 hz.iWholeDt 	= 0;
 hz.iWholeDi 	= 0;
 hz.iWholeD 		= 0;
+hz.iThreads		= 1;
 
 strcpy(hz.incrBuf, "1");
 
@@ -71,7 +72,7 @@ if(argc == 1) {
 	}
 opterr = 0; // To prevent _getopt from printing an error message on standard error
 
-while ((c = getopt (argc, argv, "t:i:c:z:b:d:hvs")) != -1)
+while ((c = getopt (argc, argv, "t:i:c:k:z:b:d:hvs")) != -1)
 	switch (c)
 		{
 		case 'h':
@@ -84,7 +85,7 @@ while ((c = getopt (argc, argv, "t:i:c:z:b:d:hvs")) != -1)
 			hz.bSeconds = true;
 			break;			
 		case 't':
-			hz.iActualDPt = strCheckAndCount(optarg);
+			hz.iActualDPt = strCheckAndCount(optarg, MAX_T);
 			if(hz.iActualDPt == -1 || strlen(optarg) > (T_BUF_SIZE -2)){
 				printf("Invalid argument to -t \n");
 				return(EXIT_FAILURE);
@@ -93,7 +94,7 @@ while ((c = getopt (argc, argv, "t:i:c:z:b:d:hvs")) != -1)
 			hz.iWholeDt = strcspn(optarg, sDot);
 			break;
 		case 'i':
-			hz.iActualDPi = strCheckAndCount(optarg);
+			hz.iActualDPi = strCheckAndCount(optarg, MAX_INCREMENT);
 			if(hz.iActualDPi == -1 || strlen(optarg) > (INCR_BUF_SIZE -2)){
 				printf("Invalid argument to -i \n");
 				return(EXIT_FAILURE);
@@ -108,6 +109,13 @@ while ((c = getopt (argc, argv, "t:i:c:z:b:d:hvs")) != -1)
 				return(EXIT_FAILURE);
 				}
 			break;
+		case 'k':
+			hz.iThreads = atoi(optarg);
+			if(!(hz.iThreads >= 1) || hz.iThreads > MAX_THREADS){
+				printf("Invalid argument to -k \n");
+				return(EXIT_FAILURE);
+				}
+			break;	
 		case 'd':
 			i = atoi(optarg);
 			if( i < 2 || i > DEBUG_MAX_VALUE ){
@@ -124,7 +132,7 @@ while ((c = getopt (argc, argv, "t:i:c:z:b:d:hvs")) != -1)
 				}
 			break;
 		case 'b':
-			hz.iFloatBits = GetFloatBits(optarg);
+			hz.iFloatBits = GetFloatBitsMPFR(optarg);
 			if(!(hz.iFloatBits > 0)){
 				printf("Invalid argument to -b \n");
 				return(EXIT_FAILURE);
@@ -142,24 +150,23 @@ if(hz.iActualDPt == -1) {
 	}
 hz.iOutputDPt 	= hz.iActualDPt > hz.iActualDPi ? hz.iActualDPt : hz.iActualDPi;
 hz.iWholeD 		= hz.iWholeDt > hz.iWholeDi ? hz.iWholeDt : hz.iWholeDi;
+hz.iThreads		= hz.iThreads > hz.iCount ? hz.iCount : hz.iThreads; 
 
 // -------------------------------------------------------------------
 // We have finished validating the command line parameters.  Now compute 
-// and printf our HardyZ results.  Time the seconds it takes to do the
+// and printf our HardyZ results.  Report the time it takes to do the
 // computations if the user enters the -s command line parameter.
 // -------------------------------------------------------------------
-if(hz.bSeconds){
-	clock_t	t;
-	double 	time_taken;
+clock_t	t;
+double 	time_taken;
 
-	t = clock(); 
-	ComputeHardyZ(hz); 
-	t = clock() - t; 
-	time_taken = ((double)t)/CLOCKS_PER_SEC; // in seconds 
+t = clock(); 
+ComputeAllHardyZ(hz); 
+t = clock() - t; 
+time_taken = ((double)t)/CLOCKS_PER_SEC; // in seconds 
+
+if(hz.bSeconds){
 	printf("Compute took %f seconds to execute \n", time_taken); 
-	}
-else{
-	ComputeHardyZ(hz); 
 	}
 return(EXIT_SUCCESS);
 }
@@ -169,13 +176,15 @@ return(EXIT_SUCCESS);
 // only digits and at most one decimal point allowed -- no commas).  
 // If validated, we return the number of decimal places in the number.
 // -------------------------------------------------------------------
-int strCheckAndCount(const char *str)
+int strCheckAndCount(const char *str, double dMax)
 {
-const char * ptr       = strchr(str, '.'); // point to decimmal point, if any
-const char   sNumDot[] = "0123456789."; 
-const char   sNumNZ[]  = "123456789"; 
+const char 	* ptr       = strchr(str, '.'); // point to decimmal point, if any
+const char	sNumDot[] = "0123456789."; 
+const char  sNumNZ[]  = "123456789"; 
 int  		NonZero    = 0;
-int	i;
+int			i;
+double		dValue;
+char 		* endptr;
 
 for (i=0; !NonZero && i < 9; i++) {
 	if(strchr(str, sNumNZ[i]) != NULL) {
@@ -187,10 +196,15 @@ if(!NonZero || strspn(str, sNumDot) != strlen(str)
 	   || strchr(str, '.') != strrchr(str, '.')) {
 	return(-1); 		// either invalid char or too may '.'
 	}
+	
+dValue = strtod(str, &endptr);
+if(dValue > dMax) {
+	return(-1); 		// Value too large
+	}	
+	
 if(!ptr) return(0); 	// no decimal point so no decimal digits
 return(strlen(++ptr));	// found decimal point, count decimal digits
 }
-
 
 // -------------------------------------------------------------------
 // We are given a string that must be validated as a number. In this
@@ -200,7 +214,7 @@ return(strlen(++ptr));	// found decimal point, count decimal digits
 // must be divisible by 64; that is, 128, 192, 256, ..., 1024.
 // If validated, we return that value.
 // -------------------------------------------------------------------
-int GetFloatBits(const char *str)
+int GetFloatBitsMPFR(const char *str)
 {
 char * 		ptr;
 size_t		Len;
@@ -222,11 +236,12 @@ return(iValue);
 
 // -------------------------------------------------------------------
 // We check whether the value passed on the command line (using the
-// -d debug parameter, and saved in hz.iDebug) "matches" the DebugNum 
+// -d debug parameter, and saved in hz.iDebug) "matches" the FlagToTest 
 // parameter passed in here.  There is a "match" if there is no 
-// remainder when you divide hz.iDebug by Debug Num.
+// remainder when you divide FlagsSet by FlagToTest.
 // -------------------------------------------------------------------
-bool DebugMode(struct HZ hz, int DebugNum)
+bool DebugMode(int FlagsSet, int FlagToTest)
 {
-return(hz.iDebug % DebugNum == 0 ? true : false);
+return(FlagsSet % FlagToTest == 0 ? true : false);
 }
+

@@ -29,21 +29,10 @@ This distribution consists of the following files:
   quite straightforward. We validate the user’s command line input, save their
   choices and then call the `ComputeHardyZ` function.
 
-  * [remainder256.c][remainder256-c-link]. This source code file provides the 
-  `ComputeRemainder256` function that computes the remainder term *R(4)*.
+  * [remainderMPFR.c][remainderMPFR-c-link]. This source code file provides the 
+  `ComputeRemainderMPFR` function that computes the remainder term *R(4)*.
   We use the Gabcke table of power series coefficients and the **MPFR** library (set to 256-bit by default and changeable by the `-b` command line
   parameter) for floating point calculations.
- 
-  * [remainder128.c][remainder128-c-link]. The functions in this file are called only when you use the ”-d” debug switch with a debug value
-divisible by 2. In that case, the “remainder” term 𝑅 is computed by calling the ComputeRemainder128
- function.  We use the **gcc** quadmath 128-bit floating point library for the Haselgrove
-  coefficients, and the **MPFR** library for all other floating point calculations.
- 
-  * [remainder.c][remainder-c-link]. Here we provide an alternate function, `ComputeRemainder`, for computing the remainder term.  Like 
-the `ComputeRemainder128` function, we compute *R(4)* using the Haselgrove table of power series coefficients.
-The difference is that, here, we use the **gcc** compiler's built-in **long double** floating point type (with 80-bit precision on our computer system).
-We no longer link to this file.  It is here because the source code in this file more clearly shows the *R(4)* algorithm for computing the remainder term.  
-Our testing showed a slight accuracy improvement (and a minimal time cost) when using `ComputeRemainder256`.
 
   * [buildcoeff.c][buildcoeff-c-link]. This source code file builds an **MPFR** version of the Gabcke power series coefficients as part of the
 overall task of initializing the **MPFR** floating point system.
@@ -52,9 +41,9 @@ overall task of initializing the **MPFR** floating point system.
     theta term in the Riemann-Siegel Formula. 
  
   * [computemain.c][computemain-c-link]. This source code file is “central control” for computing 
-  *Z(t)* values. The `ComputeHardyZ` function is the entry point. In that function, we
-  do needed initialization of the **MPFR** floating point system, call either `ComputeRemainder256`
-  or `ComputeRemainder128`, call the `ComputeMain` function (found in this source code file), and 
+  *Z(t)* values. The `ComputeAllHardyZ` function is the entry point. In that function, we
+  do needed initialization of the **MPFR** floating point system, call `ComputeRemainderMPFR`, call
+  the `ComputeMain` function (found in this source code file), and 
   print the results to `stdout`.
   
   * [hardyz.h][hardyz-h-link]. The is the only (local) include file for the program.  
@@ -80,9 +69,7 @@ See their respective links for theirs terms of license.
 [license-link]:			https://github.com/terry98004/HardyZ/blob/master/license.txt
 [readme-link]:			https://github.com/terry98004/HardyZ/blob/master/README.md
 [hardyz-c-link]:		https://github.com/terry98004/HardyZ/blob/master/hardyz.c
-[remainder256-c-link]:	https://github.com/terry98004/HardyZ/blob/master/remainder256.c
-[remainder128-c-link]:	https://github.com/terry98004/HardyZ/blob/master/remainder128.c
-[remainder-c-link]:		https://github.com/terry98004/HardyZ/blob/master/remainder.c
+[remainderMPFR-c-link]:	https://github.com/terry98004/HardyZ/blob/master/remainderMPFR.c
 [buildcoeff-c-link]:		https://github.com/terry98004/HardyZ/blob/master/buildcoeff.c
 [computemain-c-link]:	https://github.com/terry98004/HardyZ/blob/master/computemain.c
 [computetheta-c-link]:	https://github.com/terry98004/HardyZ/blob/master/computetheta.c

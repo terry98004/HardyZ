@@ -1,12 +1,12 @@
 // -------------------------------------------------------------------
-// Program last modified January 1, 2025. 
+// Program last modified August 9, 2025. 
 // Copyright (c) 2024-2025 Terrence P. Murphy
 // MIT License -- see hardyz.c for details.
 // -------------------------------------------------------------------
 #include "hardyz.h"
 
 mpfr_t	coeffMPFR[5][44];				// holds coefficients in MPFR form
-mpfr_t	PowersOfP[NUM_POWERS_P_GABCKE];	// holds powers of AdjP = 1 - (2 * P)
+// mpfr_t	PowersOfP[NUM_POWERS_P_GABCKE];	// holds powers of AdjP = 1 - (2 * P)
 
 // -------------------------------------------------------------------
 // The following table of power series coefficients is used to calculate
@@ -256,20 +256,15 @@ const char coeffGabcke[5][44][64]={
 // both: (1) the MPFR variables that will hold the Gabcke coefficients,
 // and (2) the MPFR variables holding the powers of AdjP = 1 - (2 * P).
 // -------------------------------------------------------------------
-int InitCoeffMPFR(int FloatBits)
+int InitCoeffMPFR(int iFloatBits)
 {
 int		j;
 
-for(j = 0; j < COEFF_PER_Cj; j++)		// !!!! or, just use singular version
+for(j = 0; j < COEFF_PER_Cj; j++)		// init all coefficient slots
 	{
-	mpfr_inits2 (FloatBits, coeffMPFR[0][j], coeffMPFR[1][j], 
+	mpfr_inits2 (iFloatBits, coeffMPFR[0][j], coeffMPFR[1][j], 
 	coeffMPFR[2][j], coeffMPFR[3][j], coeffMPFR[4][j],  (mpfr_ptr)0);	
 	}
-
-for(j = 0; j < NUM_POWERS_P_GABCKE; j++)
-	{
-	mpfr_init2 (PowersOfP[j], FloatBits);	// !!!! the singular version
-	}	
 return(1);	
 }
 
@@ -283,16 +278,12 @@ int CloseCoeffMPFR(void)
 {
 int		j;
 
-for(j = 0; j < COEFF_PER_Cj; j++)		// !!!! or, just use singular version
+for(j = 0; j < COEFF_PER_Cj; j++)		// clear all coefficienbt slots
 	{
 	mpfr_clears (coeffMPFR[0][j], coeffMPFR[1][j], 
 	coeffMPFR[2][j], coeffMPFR[3][j], coeffMPFR[4][j],  (mpfr_ptr)0);	
 	}	
-	
-for(j = 0; j < NUM_POWERS_P_GABCKE; j++)
-	{
-	mpfr_clear (PowersOfP[j]);			// !!!! the singular version
-	}		
+
 return(1);	
 }
 
@@ -304,19 +295,19 @@ return(1);
 // a call to mpfr_set_str.  The returned MPFR value is entered in
 // the correct "slot" in coeffMPFR.
 // -------------------------------------------------------------------
-int BuildCoefficientsMPFR(struct HZ hz)
+int BuildCoefficientsMPFR(bool Debug) // !!!! changed passed parameter
 {
 int		i, j;
 
 for(i = 0; i < 5; i++)
 	{
-	if(DebugMode(hz, PRINT_COEFF)) {
+	if(Debug) {							// !!!! changed to Debug
 	printf("-------------------- \n");
 		}	
 	for (j = 0; j < COEFF_PER_Cj; j++)
 		{
 		CoeffStrToMPFR(&coeffMPFR[i][j], coeffGabcke[i][j]);
-		if(DebugMode(hz, PRINT_COEFF)) {
+		if(Debug) {						// !!!! changed to Debug
 			if(coeffGabcke[i][j][0] == '-') {
 			mpfr_printf("%.50Rf \n", coeffMPFR[i][j]);
 				}

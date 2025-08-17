@@ -1,5 +1,5 @@
 // -------------------------------------------------------------------
-// Program last modified January 1, 2025. 
+// Program last modified August 11, 2025. 
 // Copyright (c) 2024-2025 Terrence P. Murphy
 // MIT License -- see hardyz.c for details.
 // -------------------------------------------------------------------
@@ -7,31 +7,28 @@
 
 mpfr_t	myPi, my2Pi, myLog2;
 
-// -------------------------------------------------------------------
+// *******************************************************************
 // We call this function before using any MPFR functions.  We set the
 // default MPFR precision and create global variables holding the
 // values of Pi 2Pi and Log(2), 
-// -------------------------------------------------------------------
-int InitMPFR(struct HZ hz)
+// *******************************************************************
+int InitMPFR(int iFloatBits, int DebugFlagsSet)
 {
 // -------------------------------------------------------------------
 // Set default precision for MPFR
 // -------------------------------------------------------------------
-mpfr_set_default_prec (hz.iFloatBits);
+mpfr_set_default_prec (iFloatBits);
 
 // -------------------------------------------------------------------
 // Initialize the global mpfr (constant) variables
 // -------------------------------------------------------------------
-mpfr_inits2 (hz.iFloatBits, myPi, my2Pi, myLog2, (mpfr_ptr) 0);
+mpfr_inits2 (iFloatBits, myPi, my2Pi, myLog2, (mpfr_ptr) 0);
 
 // -------------------------------------------------------------------
-// If we are in "full MPFR" mode for the remainder term, then
-// initialize the MPFR variables that will hold the coefficients.
+// Initialize the MPFR variables that will hold the coefficients.
 // -------------------------------------------------------------------
-if(!DebugMode(hz, COEFF_128)) {
-	InitCoeffMPFR(hz.iFloatBits);	
-	BuildCoefficientsMPFR(hz);
-	}
+InitCoeffMPFR(iFloatBits);	
+BuildCoefficientsMPFR(DebugMode(DebugFlagsSet, PRINT_COEFF));
 
 // -------------------------------------------------------------------
 // Set the value of the global mpfr (constant) variables
@@ -42,11 +39,11 @@ mpfr_const_log2 (myLog2, MPFR_RNDN);
 return(0);
 }
 
-// -------------------------------------------------------------------
+// *******************************************************************
 // We call this function after we are done using all MPFR functions.  
 // We clear the remaining memory and any cache used by MPFR. 
-// -------------------------------------------------------------------
-int CloseMPFR(struct HZ hz)
+// *******************************************************************
+int CloseMPFR(void)
 {
 // -------------------------------------------------------------------
 // Free the space used by the global mpfr (constant) variables
@@ -54,12 +51,9 @@ int CloseMPFR(struct HZ hz)
 mpfr_clears (myPi, my2Pi, myLog2, (mpfr_ptr) 0);
 
 // -------------------------------------------------------------------
-// If we are in "full MPFR" mode for the remainder term, then
-// free the MPFR variables that held the coefficients.
+// Free the MPFR variables that held the coefficients.
 // -------------------------------------------------------------------
-if(!DebugMode(hz, COEFF_128)) {
-	CloseCoeffMPFR();
-	}
+CloseCoeffMPFR();
 
 // -------------------------------------------------------------------
 // Clear the cache used by MPFR.
@@ -68,136 +62,161 @@ mpfr_free_cache ();
 return(0);
 }
 
-// -------------------------------------------------------------------
+// *******************************************************************
 // We compute the Hardy Z values here.  The loop is over the count of
 // different 't' values to compute (based on hz.iCount). Inside the 
-// loop, we call ComputeMain and ComputeRemainder and add those 
-// together to get the Hardy Z value. We then printf the result,
+// loop, we call ComputeSingleHardyZ. We then printf the result,
 // and then increase 't' by hz.dIncr and repeat hz.iCount times.
-// -------------------------------------------------------------------
-int ComputeHardyZ(struct HZ hz)
+// *******************************************************************
+int ComputeAllHardyZ(struct HZ hz)
 {
-mpfr_t			t, tOver2Pi, T, Incr, N, P, Temp1, Main, Remainder, HardyZ;
-int				i;
-unsigned int	uiN;
+mpfr_t				t, Incr;
+struct computeHZ 	comphz[MAX_THREADS];
+int					i;
 
 // -------------------------------------------------------------------
 // Initiate use of the MPFR system.  
 // -------------------------------------------------------------------
-InitMPFR(hz);
+InitMPFR(hz.iFloatBits, hz.iDebug);
 
 // -------------------------------------------------------------------
 // Initialize several MPFR variables.  The 't' value is obtained
 // from the hz.tBuf string, and the amount to increment 't' is obtained
 // from the hz.incrBuf string.  
-// We also set Temp1 to the maximum allowed size of 't' for use in the
-// mpfr_cmp function just below.
 // We use the mpfr_set_str function because the MPFR FAQ says that the
 // other variations such as mpfr_set_ld are much less accurate.
 // -------------------------------------------------------------------
-mpfr_inits2 (hz.iFloatBits, t, tOver2Pi, T, Incr, N, P, Temp1, 
-		Main, Remainder, HardyZ, (mpfr_ptr) 0);
+mpfr_inits2 (hz.iFloatBits, t, Incr, (mpfr_ptr) 0);
+
+for(i=0; i< hz.iThreads; i++) { 
+	mpfr_inits2 (hz.iFloatBits, comphz[i].t, comphz[i].Result, (mpfr_ptr) 0);
+	comphz[i].ptrResult = &comphz[i].Result;
+	comphz[i].iFloatBits = hz.iFloatBits;		
+	comphz[i].DebugFlagsSet = hz.iDebug;		
+	}
+
 mpfr_set_str (t, hz.tBuf, 10, MPFR_RNDN);
 mpfr_set_str (Incr, hz.incrBuf, 10, MPFR_RNDN);
-mpfr_set_str (Temp1, MAX_T_STRING, 10, MPFR_RNDN);
-
-if(mpfr_cmp (t, Temp1) > 0) {	// improve this error checking?
-	printf("The t value entered is too large.  Cannot exceed 1.15e20 \n");
-	mpfr_set_ui (t, 0, MPFR_RNDN);
-	hz.iCount = 0;	// this values skips the next for loop.
-	}
 
 // -------------------------------------------------------------------
 // We loop hz.iCount times, processing 't' in the first (i = 1) loop.
 // If hz.iCount is greater than one, we increment 't' by the Incr
 // amount and loop again.  
 //
-// In the loop, we compute N and P for the given 't'.  We then call
-// ComputeRemainder and ComputeMain to do the "heavy lifting" in
-// computing the Hardy Z value.
+// In the loop, we call ComputeSingleHardyZ and print the result.
 // -------------------------------------------------------------------
-for (i = 1; i <= hz.iCount; i++ ) {	
-	// ---------------------------------------------------------------
-	// Compute t/(2 pi) - needed in multiple places
-	// ---------------------------------------------------------------	
-	mpfr_div (tOver2Pi, t, my2Pi, MPFR_RNDN);
+int			j, m, iRemaining;
+pthread_t	thread_id[MAX_THREADS];
 
-	// ---------------------------------------------------------------
-	// Compute N and P in-line 
-	// NOTE: Because N is (currently) an unsigned int (we assume 32-bit),
-	// then 0 <= N <= 4,294,967,295.  
-	// Thus, t cannot exceed about 1.15 * 10^{20} in the calcs below.
-	// (We checked the value of 't' above).
-	// ---------------------------------------------------------------	
-	mpfr_sqrt (T, tOver2Pi, MPFR_RNDN);
-	mpfr_modf (N, P, T, MPFR_RNDN);
-	uiN = (unsigned int) mpfr_get_ui (N, MPFR_RNDN);
+i = 0;
+while(i < hz.iCount)
+	{
+	iRemaining = hz.iCount - i;
+	m = hz.iThreads > iRemaining ? iRemaining : hz.iThreads;
 	
-	// ---------------------------------------------------------------
-	// Compute the Remainder term.  The first step is to compute
-	// t/(2* pi)]^{-1/4}.  We use the "square root of the reciprocal
-	// then square root" method.  Former method:
-	//
-	//		mpfr_set_ld (Temp1, -0.25, MPFR_RNDN);
-	//		mpfr_pow (Temp1, tOver2Pi, Temp1, MPFR_RNDN);	
-	// ---------------------------------------------------------------	
-	mpfr_rec_sqrt (Temp1, tOver2Pi, MPFR_RNDN);
-	mpfr_sqrt (Temp1, Temp1, MPFR_RNDN);
-	
-	// ---------------------------------------------------------------
-	// We now call  ComputeRemainder256 (uses MPFR), unless a debug flag
-	// is set to call ComputeRemainder128 (uses a combination of
-	// 128-bit quadmath plus MPFR).
-	// ---------------------------------------------------------------		
-	if(!DebugMode(hz, COEFF_128)) {
-		ComputeRemainder256(&Remainder, P, Temp1, uiN, hz);
-		}
-	else
+	for (j = 0; j < m; j++)
 		{
-		ComputeRemainder128(&Remainder, P, Temp1, uiN, hz);
+		// ---------------------------------------------------------------
+		// Update comphz values for the current 't'
+		// ---------------------------------------------------------------	
+		mpfr_set (comphz[j].t, t, MPFR_RNDN);
+		mpfr_set_ui (comphz[j].Result, 0, MPFR_RNDN);
+		
+		if(hz.iThreads > 1) {
+			pthread_create( &thread_id[j], NULL, ComputeSingleHardyZThreaded, &comphz[j] );
+			}
+		else {
+			ComputeSingleHardyZ(&comphz[0]);
+			}
+		mpfr_add (t, t, Incr, MPFR_RNDN);
 		}
-
-	if(DebugMode(hz, PRINT_REMAINDER)) {
-		mpfr_printf("Remainder R(4): %.50Rf \n", Remainder);
-		}
-	
-	// ---------------------------------------------------------------
-	// Now compute the Main term and add to Remainder to get HardyZ.
-	// ---------------------------------------------------------------	
-	ComputeMain(&Main, t, uiN, hz);
-	mpfr_add (HardyZ, Main, Remainder, MPFR_RNDN);
-
-	// ---------------------------------------------------------------
-	// Print the results for our current t 
-	// ---------------------------------------------------------------		
-	hz.bVerbose ? mpfr_printf("For t = %.*Rf, Z(t) = %.*Rf \n", 
-					hz.iOutputDPt, t, hz.iOutputDPz, HardyZ)
-		: mpfr_printf("%.*Rf, %.*Rf \n", hz.iOutputDPt, t, hz.iOutputDPz, HardyZ);
-
-	// ---------------------------------------------------------------
-	// Increment 't' by Incr for the next pass (if any) through the loop.
-	// ---------------------------------------------------------------	
-	mpfr_add (t, t, Incr, MPFR_RNDN);
- 	} // end of for loop
+	for (j = 0; j < m; j++)
+		{
+		if(hz.iThreads > 1) {
+			pthread_join( thread_id[j], NULL); 
+			}
+		}		
+	for (j = 0; j < m; j++)
+		{
+		hz.bVerbose ? mpfr_printf("For t = %.*Rf, Z(t) = %.*Rf \n", 
+					hz.iOutputDPt, comphz[j].t, hz.iOutputDPz, comphz[j].Result)
+			: mpfr_printf("%.*Rf, %.*Rf \n", hz.iOutputDPt, comphz[j].t, 
+					hz.iOutputDPz, comphz[j].Result);
+		i++;	// we need 'i' here so it is incremented 'm' times 
+		}			
+	}	// end of outer for loop
 
 // -------------------------------------------------------------------
 // We are done with the MPFR system.  Clear our local MPFR variables
 // and then close down the MPFR system.
 // -------------------------------------------------------------------
-mpfr_clears (t, tOver2Pi, T, Incr, N, P, Temp1, 
-		Main, Remainder, HardyZ, (mpfr_ptr) 0);
-CloseMPFR(hz);
+mpfr_clears (t, Incr, (mpfr_ptr) 0);
+
+for(i=0; i< hz.iThreads; i++) {
+	mpfr_clears (comphz[i].t, comphz[i].Result, (mpfr_ptr) 0);
+	}
+
+CloseMPFR();
 return(1);
 }
 
+// *******************************************************************
+// For correct typing on the pthread_cerate call, we need this
+// pass-through function.
+// *******************************************************************
+void * ComputeSingleHardyZThreaded(void * comphz)
+{
+ComputeSingleHardyZ((struct computeHZ *) comphz);
+return(NULL);
+}
+
+// *******************************************************************
+// We compute a single Hardy Z values here.  
+// *******************************************************************
+int ComputeSingleHardyZ(struct computeHZ * comphz)
+{
+mpfr_t			tOver2Pi, T, N, P, Main, Remainder;
+unsigned int	uiN;
+
+mpfr_inits2 (comphz->iFloatBits, 
+				tOver2Pi, T, N, P, Main, Remainder, (mpfr_ptr) 0);
+
+// ---------------------------------------------------------------
+// Compute N and P for the given 't'. 
+// NOTE: Because N is (currently) an unsigned int (we assume 32-bit),
+// then 0 <= N <= 4,294,967,295.  
+// Thus, t cannot exceed about 1.15 * 10^{20} in the calcs below.
+// (We assume here that the value of 't' was previously checked).
+// ---------------------------------------------------------------	
+mpfr_div (tOver2Pi, comphz->t, my2Pi, MPFR_RNDN);
+mpfr_sqrt (T, tOver2Pi, MPFR_RNDN);
+mpfr_modf (N, P, T, MPFR_RNDN);
+uiN = (unsigned int) mpfr_get_ui (N, MPFR_RNDN);
+	
+// ---------------------------------------------------------------
+// Compute the remainder term.
+// ---------------------------------------------------------------		
+ComputeRemainderMPFR(&Remainder, tOver2Pi, uiN, P, comphz->iFloatBits);
+
+if(DebugMode(comphz->DebugFlagsSet, PRINT_REMAINDER)) {
+	mpfr_printf("Remainder R(4): %.50Rf \n", Remainder);
+	}
+	
+// ---------------------------------------------------------------
+// Now compute the Main term and add to Remainder to get HardyZ.
+// ---------------------------------------------------------------	
+ComputeMain(&Main, comphz->t, uiN, comphz->iFloatBits, comphz->DebugFlagsSet);
+mpfr_add (*comphz->ptrResult, Main, Remainder, MPFR_RNDN);
 
 // -------------------------------------------------------------------
+// Clear our local MPFR variables.
+// -------------------------------------------------------------------
+mpfr_clears (tOver2Pi, T, N, P, Main, Remainder, (mpfr_ptr) 0);
+return(1);
+}
+
+// *******************************************************************
 // We compute the main term of the Riemann-Siegel formula.  
-// NOTE: 
-//
-// We pass in the Result variable (to hold the result of our calculation),
-// the 't' to calculate, the previously calculated 'N' variable, 
-// plus the HZ structore.
 //
 // First Step: compute theta(t).  
 //
@@ -207,8 +226,8 @@ return(1);
 //		sqrt(1/n) * cos[theta(t) - t log n]
 //
 // Third Step: return 2 times the sum of those N terms.
-// -------------------------------------------------------------------
-int ComputeMain(mpfr_t *Result, mpfr_t t, unsigned int N, struct HZ hz)
+// *******************************************************************
+int ComputeMain(mpfr_t *Result, mpfr_t t, unsigned int N, int iFloatBits, int DebugFlagsSet)
 {
 mpfr_t	Theta;
 
@@ -224,8 +243,8 @@ if(N < 1)
 // -------------------------------------------------------------------
 // Step 1: Compute Theta.
 // -------------------------------------------------------------------
-mpfr_inits2 (hz.iFloatBits, Theta, (mpfr_ptr) 0);
-ComputeTheta(&Theta, t, hz);
+mpfr_inits2 (iFloatBits, Theta, (mpfr_ptr) 0);
+ComputeTheta(&Theta, t, iFloatBits);
 //mpfr_printf("Theta = %.40Rf\n", Theta);
 
 // -------------------------------------------------------------------
@@ -235,7 +254,7 @@ ComputeTheta(&Theta, t, hz);
 mpfr_t	Temp1, Temp2;
 mpfr_t	Main, RecipSqrtn, CosArg, CosCalc, FullTerm, LognMinusOne;
 
-mpfr_inits2 (hz.iFloatBits, Temp1, Temp2, 
+mpfr_inits2 (iFloatBits, Temp1, Temp2, 
 	Main, RecipSqrtn, CosArg, CosCalc, FullTerm, LognMinusOne, (mpfr_ptr) 0);
 
 // -------------------------------------------------------------------
@@ -267,7 +286,7 @@ if(N >= 2)
 // -------------------------------------------------------------------
 // Now process the n = 3 through n = N terms
 // -------------------------------------------------------------------
-for (unsigned int n = 3; n <= N; ++n) {
+for (unsigned int n = 3; n <= N; ++n) { // need C99 ro define 'n' here 
 	// ---------------------------------------------------------------
 	// We need an mpfr_t version of n, so save in Temp1
 	// ---------------------------------------------------------------	
@@ -278,7 +297,7 @@ for (unsigned int n = 3; n <= N; ++n) {
 	// ---------------------------------------------------------------	
 	mpfr_rec_sqrt (RecipSqrtn, Temp1, MPFR_RNDN);	
 
-	if(DebugMode(hz, COS_ARG_NOT_SAVED)) { // do NOT do Version 2 (saving CosArg, etc.)
+	if(DebugMode(DebugFlagsSet, COS_ARG_NOT_SAVED)) { // do NOT do Version 2 (saving CosArg, etc.)
 		//#####################################################################################	
 		// ---------------------------------------------------------------
 		// Second, compute the argument to the cosine term. (Version 1)
@@ -305,7 +324,7 @@ for (unsigned int n = 3; n <= N; ++n) {
 		//#####################################################################################
 		}
 
-	if(!DebugMode(hz, COS_ARG_2PI)) { // skip this if indicated debug flag is set
+	if(!DebugMode(DebugFlagsSet, COS_ARG_2PI)) { // skip this if indicated debug flag is set
 		//#####################################################################################	
 		//----------------------------------------------------------------
 		// divide CosArg by 2 pi and keep the remainder

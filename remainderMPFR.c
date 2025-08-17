@@ -1,5 +1,5 @@
 // -------------------------------------------------------------------
-// Program last modified January 1, 2025. 
+// Program last modified August 9, 2025. 
 // Copyright (c) 2024-2025 Terrence P. Murphy
 // MIT License -- see hardyZ.c for details.
 // -------------------------------------------------------------------
@@ -18,21 +18,35 @@
 // With a leading (whole number) term of 0 or -0, the MPFR (256 bit) 
 // data type should be accurate to more than 70 decimal places.
 // -------------------------------------------------------------------
-extern mpfr_t	PowersOfP[NUM_POWERS_P_GABCKE];
 extern mpfr_t	coeffMPFR[5][44];
 
 // -------------------------------------------------------------------
 // The function computes a remainder FACTOR and a remainder 
 // SUM, and then returns the product of FACTOR * SUM.
 // -------------------------------------------------------------------
-int ComputeRemainder256(mpfr_t *Result, mpfr_t P, mpfr_t tFraction, unsigned int N, struct HZ hz)
+int ComputeRemainderMPFR(mpfr_t *Result, mpfr_t tOver2Pi, 
+		unsigned int N, mpfr_t P, int iFloatBits)
 {
-mpfr_t		Factor, Total, Temp1, Temp2, AdjP, Cj;
+mpfr_t		tFraction, Factor, Total, Temp1, Temp2, AdjP, Cj;
+mpfr_t		PowersOfP[NUM_POWERS_P_GABCKE];
+unsigned int	j;
 
 // -------------------------------------------------------------------
 // initialize all mpfr_t variables
 // -------------------------------------------------------------------
-mpfr_inits2 (hz.iFloatBits, Factor, Total, Temp1, Temp2, AdjP, Cj, (mpfr_ptr) 0);	
+mpfr_inits2 (iFloatBits, tFraction, Factor, Total, Temp1, Temp2, AdjP, Cj, (mpfr_ptr) 0);	
+
+for(j = 0; j < NUM_POWERS_P_GABCKE; j++)	// init all P powers slots
+	{
+	mpfr_init2 (PowersOfP[j], iFloatBits);	// note: singular "init"
+	}	
+
+// ---------------------------------------------------------------
+// Compute // t/(2* pi)]^{-1/4}.  We use the "square root of the 
+// reciprocal and then the square root" method.
+// ---------------------------------------------------------------	
+mpfr_rec_sqrt (tFraction, tOver2Pi, MPFR_RNDN);
+mpfr_sqrt (tFraction, tFraction, MPFR_RNDN);
 
 // -------------------------------------------------------------------
 // Compute FACTOR = tFraction * (-1)^{N - 1}
@@ -73,16 +87,19 @@ for(unsigned int k=1; k < NUM_POWERS_P_GABCKE; k++) {
 // After computing each Cj, we multiply that Cj by tFraction^{2j}
 // and add that value to the Total value.
 // -------------------------------------------------------------------
-unsigned int	i, j, uiEvenOdd, uiPowersJ;
+unsigned int	i, uiEvenOdd, uiPowersJ;
 
-	// Set Total = 0
-mpfr_set_zero (Total, 1);
+mpfr_set_zero (Total, 1);	// Start with a Total of zero
 
+	////////////////////////////////////
 	// Outer loop calculates a Cj term 
+	////////////////////////////////////
 for(j=0, uiPowersJ = 0; j < NUM_Cj_TERMS; j++, uiPowersJ += 2) {
 	// we are beginning a new Cj term, so set Cj = 0
 	mpfr_set_zero (Cj, 1);
+		//////////////////////////////////////////////////////////////////
 		// Inner loop is through the non-zero coefficients of this Cj term
+		//////////////////////////////////////////////////////////////////
 	for(i=0; i < COEFF_PER_Cj; i++) {
 		// Determine if non-zero coefficients are in even or odd slots 
 		uiEvenOdd = (j % 2);
@@ -102,8 +119,11 @@ for(j=0, uiPowersJ = 0; j < NUM_Cj_TERMS; j++, uiPowersJ += 2) {
 	// After exiting the outer loop, save Total in the passed Result variable
 mpfr_mul (*Result, Total, Factor, MPFR_RNDN);
 	// Clear the MPFR variables 
-mpfr_clears (Factor, Total, Temp1, Temp2, AdjP, Cj, (mpfr_ptr) 0);	
+mpfr_clears (tFraction, Factor, Total, Temp1, Temp2, AdjP, Cj, (mpfr_ptr) 0);	
+	
+for(j = 0; j < NUM_POWERS_P_GABCKE; j++)	// clear all P powers slots
+	{
+	mpfr_clear (PowersOfP[j]);				// Note singular "clear"
+	}		
 return(1);
 }
-
-//	mpfr_printf("Cj: %.50Rf \n", Cj);

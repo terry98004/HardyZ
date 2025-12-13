@@ -1,21 +1,14 @@
 # HardyZ
-Calculate Values of the Hardy Z Function
+Using the libHGT static library, calculate values of the Hardy Z function
 
 ## Overview
 
-We provide here a C program to calculate *Z(t)*, the Hardy Z function, for 't' a positive real number.  Our program uses 
-the Riemann-Siegel Formula.  
+We provide here a C program to calculate *Z(t)*, the Hardy Z function, for 't' a positive real number.  The actual calculation work is done by calls to functions in the **libHGT** static library.  The code here is a front end to that calculating code that: (1) gathers the user-requested parameters for the calculations via the command line, (2) validates those command line parameters (by calls to the library), (3) passes those parameters to the calculating code in the library), and (4) prints (via stdout) a report of those calculations.
 
-The included PDF file briefly describes the mathematics behind the calculations.  Here we will just mention
-that, for any given 't', the calculations compute a "main" term *M* and an approximate "remainder" term *R(4)*,
-with *R(4)* a very close approximation of the actual remainder term *R*. We then have *Z(t) = M + R(4)*.
+To create an executable, you will need two files from the **libHGT** library: (1) the **hgt.h** include file, and (2) the **libhgt.a** static library file.
 
-Much greater detail on the mathematics is given in my book: 
-*A Study of Riemann's Zeta Function* by Terrence P. Murphy.  The book is available on Amazon.  Go [here][website-link] to 
-view the Table of Contents and Preface for all of my books.
-
-The source code is intended for use with the **gcc** compiler and the **MPFR** floating point library.  Although only tested on 
-64-bit Windows 11, I believe the source code is portable to other operating systems.
+Like the **libHGT** library, the source code is intended for use with the **gcc** compiler.  Although only tested on 
+64-bit Windows 11, the source code should be portable to other 64-bit operating systems supported by **gcc**.
 
 ## Files
 
@@ -23,38 +16,30 @@ This distribution consists of the following files:
 
   * [README.md][readme-link]. The file you are currently reading.
   
-  * [license.txt][license-link] A text file containing the MIT License which applies to this work.
-	
-  * [Hardyz.c][hardyz-c-link]. The `main` function entry pont for our program.  This source code file is 
+  * [Hardyz.c][hardyz-c-link]. The entry pont for our program.  This source code file is 
   quite straightforward. We validate the user’s command line input, save their
-  choices and then call the `ComputeHardyZ` function.
-
-  * [remainderMPFR.c][remainderMPFR-c-link]. This source code file provides the 
-  `ComputeRemainderMPFR` function that computes the remainder term *R(4)*.
-  We use the Gabcke table of power series coefficients and the **MPFR** library (set to 256-bit by default and changeable by the `-b` command line
-  parameter) for floating point calculations.
-
-  * [buildcoeff.c][buildcoeff-c-link]. This source code file builds an **MPFR** version of the Gabcke power series coefficients as part of the
-overall task of initializing the **MPFR** floating point system.
-
-  * [computetheta.c][computetheta-c-link]. This source code file uses the MPFR floating point library to compute the
-    theta term in the Riemann-Siegel Formula. 
+  choices and then call the 'ComputeAllHardyZ' function, which in turn calls the **libHGT** functions that do the actual calculations.
  
-  * [computemain.c][computemain-c-link]. This source code file is “central control” for computing 
-  *Z(t)* values. The `ComputeAllHardyZ` function is the entry point. In that function, we
-  do needed initialization of the **MPFR** floating point system, call `ComputeRemainderMPFR`, call
-  the `ComputeMain` function (found in this source code file), and 
-  print the results to `stdout`.
+  * [CompHardyz.c][CompHardyz-c-link]. This source code file includes: (1) the 'ComputeAllHardyZ' function, which in calls the **libHGT** functions that do the actual calculations, and (2) the 'HardyZCallback' function which is called from the **libHGT** functions and is used to print the output reports.
   
   * [hardyz.h][hardyz-h-link]. The is the only (local) include file for the program.  
   
   * [makehardyz.bat][makehardyz-bat-link]. The is the "makefile" for the program.  Currently,
   this file is a Windows batch file (**not** an actual makefile), but can be easily converted to 
   a standard makefile.
-  
-  * [hardyz.pdf][hardyz-pdf-link]. A PDF file with further discussion of our software, the building
-  of our software program, and the mathematics behind our software. The PDF is created using LaTex, 
-  needed to allow proper display / layout of the mathematics.
+
+## Command Line Parameters
+
+ *  -t [positive number]	The t value for Z(t) - this parameter is required. (Digits and '.' only).
+ *  -i [positive number]	Amount to increment t (if checking multiple t values) - defaults to 1.
+ *  -c [positive integer]	Count of the number of t values to check - defaults to 1.
+ *  -p [positive integer]	Decimal point digits of Z(t) to show in report - defaults to 6.
+ *  -b [positive integer]	Floating point bits: 128 <= b <= 1024 - defaults to 256.
+ *  -d [positive integer]	Used for debugging only.  Please disregard.
+ *  -k [positive integer]	Number of threads to use - defaults to 1, maximum of 8.
+ *  -h			Show command line parameters.  All other parameters will be ignored.
+ *  -s			Report the total seconds taken to compute the Hardy Z values.
+ *  -v			Verbose report (otherwise CSV only).
 
 ## Terms of use
 
@@ -66,16 +51,11 @@ We also used the [**msys2**][msys2-link] software distribution and building plat
 See their respective links for theirs terms of license.  
 
 [website-link]:			https://riemann1859.com
-[license-link]:			https://github.com/terry98004/HardyZ/blob/master/license.txt
 [readme-link]:			https://github.com/terry98004/HardyZ/blob/master/README.md
 [hardyz-c-link]:		https://github.com/terry98004/HardyZ/blob/master/hardyz.c
-[remainderMPFR-c-link]:	https://github.com/terry98004/HardyZ/blob/master/remainderMPFR.c
-[buildcoeff-c-link]:		https://github.com/terry98004/HardyZ/blob/master/buildcoeff.c
-[computemain-c-link]:	https://github.com/terry98004/HardyZ/blob/master/computemain.c
-[computetheta-c-link]:	https://github.com/terry98004/HardyZ/blob/master/computetheta.c
+[CompHardyz-c-link]:	https://github.com/terry98004/HardyZ/blob/master/CompHardyz.c
 [hardyz-h-link]:		https://github.com/terry98004/HardyZ/blob/master/hardyz.h
 [makehardyz-bat-link]:	https://github.com/terry98004/HardyZ/blob/master/makehardyz.bat
-[hardyz-pdf-link]:		https://github.com/terry98004/HardyZ/blob/master/hardyz.pdf
 [mpfr-link]:			https://www.mpfr.org/
 [gcc-gnu-link]:			https://gcc.gnu.org/
 [msys2-link]:			https://www.msys2.org/

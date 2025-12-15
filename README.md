@@ -5,10 +5,19 @@ Using the libHGT static library, calculate values of the Hardy Z function
 
 We provide here a C program to calculate *Z(t)*, the Hardy Z function, for 't' a positive real number.  The actual calculation work is done by calls to functions in the **libHGT** static library.  The code here is a front end to that calculating code that: (1) gathers the user-requested parameters for the calculations via the command line, (2) validates those command line parameters (by calls to the library), (3) passes those parameters to the calculating code in the library), and (4) prints (via stdout) a report of those calculations.
 
-To create an executable, you will need two files from the **libHGT** library: (1) the **hgt.h** include file, and (2) the **libhgt.a** static library file.
+## Building the Executable
 
-Like the **libHGT** library, the source code is intended for use with the **gcc** compiler.  Although only tested on 
-64-bit Windows 11, the source code should be portable to other 64-bit operating systems supported by **gcc**.
+For Windows 11 users, an executable is included with any release posted on GitHub.
+
+For other operating systems, you will need to build the executable, as follows.
+
+*  You need the [**gcc**][gcc-gnu-link] C compiler installed on your system.  That installation must include the **libmpfr.a** and **libgmp.a** (floating point) static libraries.
+
+*  From [**libHGT**][libhgt-link], you need to: (1) create the **libhgt.a** static library file, and (2) make that library file plus **hgt.h** visible to the **gcc** compiler.
+
+*  Following the build logic in the **makehardyz.bat** file, you need to create the necessary 'makefile', in the form that applies to your operating system and the **gcc** compiler.
+
+You can then build the HardyZ executable from the provided source files.
 
 ## Files
 

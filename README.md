@@ -68,3 +68,4 @@ See their respective links for theirs terms of license.
 [mpfr-link]:			https://www.mpfr.org/
 [gcc-gnu-link]:			https://gcc.gnu.org/
 [msys2-link]:			https://www.msys2.org/
+[libhgt-link]:			https://github.com/terry98004/libHGT/

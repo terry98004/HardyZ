@@ -3,7 +3,7 @@ Using our **libHGT** static library, calculate values of the Hardy Z function
 
 ## Overview
 
-We provide here a C program to calculate *Z(t)*, the Hardy Z function, for 't' a positive real number.  The actual calculation work is done by calls to functions in the **libHGT** static library.  The code here is a front end to that calculating code that: (1) gathers the user-requested parameters for the calculations via the command line, (2) validates those command line parameters (by calls to the library), (3) passes those parameters to the calculating code in the library), and (4) prints (via stdout) a report of those calculations.
+We provide here a C program to calculate *Z(t)*, the Hardy Z function, for 't' a positive real number.  The actual calculation work is done by calls to functions in the **libHGT** static library.  The code here is a front end to that calculating code that: (1) gathers the user-requested parameters (via the command line) for the calculations, (2) validates those command line parameters (by calls to the library), (3) passes those parameters to the calculating code in the library, and (4) prints (via stdout) a report of those calculations.
 
 ## Building the Executable
 

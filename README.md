@@ -1,5 +1,5 @@
 # HardyZ
-Using the libHGT static library, calculate values of the Hardy Z function
+Using our **libHGT** static library, calculate values of the Hardy Z function
 
 ## Overview
 

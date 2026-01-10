@@ -1,11 +1,8 @@
 // -------------------------------------------------------------------
-// Program last modified November 30, 2025. 
-// Copyright (c) 2024-2025 Terrence P. Murphy
+// Program last modified January 9, 2026. 
+// Copyright (c) 2024-2026 Terrence P. Murphy
 // MIT License -- see hardyz.c for details.
 // -------------------------------------------------------------------
-
-#include <quadmath.h>
-#define MPFR_WANT_FLOAT128 1
 
 #include <time.h>
 #include <stdio.h>

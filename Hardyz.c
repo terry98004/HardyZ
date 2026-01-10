@@ -1,11 +1,11 @@
 // -------------------------------------------------------------------
-// Program last modified November 30, 2025. 
+// Program last modified January 9, 2026. 
 // -------------------------------------------------------------------
 
 /*
 MIT License
 
-Copyright (c) 2025 Terrence P. Murphy
+Copyright (c) 2025-2026 Terrence P. Murphy
 
 Permission is hereby granted, free of charge, to any person obtaining a copy
 of this software and associated documentation files (the "Software"), to deal
@@ -25,9 +25,6 @@ LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM,
 OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 SOFTWARE.
 */
-
-#include <quadmath.h>
-#define MPFR_WANT_FLOAT128 1
 
 #include <time.h>
 #include <stdio.h>
@@ -57,7 +54,7 @@ const char sUsage[] = "Command Line Parameters\n" \
  "-s			Report the total seconds taken to compute the Hardy Z values.\n"\
  "-v			Verbose report (otherwise CSV only)."; 
 
-const char sCopyright[] = "Copyright 2025 by Terrence P. Murphy." \
+const char sCopyright[] = "Copyright 2025-2026 by Terrence P. Murphy." \
 " Licensed under MIT License.\n\n"; 
 
 

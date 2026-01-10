@@ -1,6 +1,6 @@
 // -------------------------------------------------------------------
 // Program last modified November 30, 2025. 
-// Copyright (c) 2024-2025 Terrence P. Murphy
+// Copyright (c) 2024-2026 Terrence P. Murphy
 // MIT License -- see hardyZ.c for details.
 // -------------------------------------------------------------------
 

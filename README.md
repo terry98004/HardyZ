@@ -17,7 +17,7 @@ For other operating systems, you will need to build the executable, as follows.
 
 *  From [**libHGT**][libhgt-link], you need to: (1) create the **libhgt.a** static library file, and (2) make that library file plus **hgt.h** visible to the **gcc** compiler.
 
-*  Following the build logic in the **makehardyz.bat** file, you need to create the necessary 'makefile', in the form that applies to your operating system and the **gcc** compiler.
+*  Following the build logic in the **makehardyz.bat** file, we provide a **makefile**, in the form that should work with your operating system and the **gcc** compiler.
 
 You can then build the HardyZ executable from the provided source files.
 
@@ -33,7 +33,9 @@ This distribution consists of the following files:
  
   * [CompHardyz.c][CompHardyz-c-link]. This source code file includes: (1) the 'ComputeAllHardyZ' function, which in calls the **libHGT** functions that do the actual calculations, and (2) the 'HardyZCallback' function which is called from the **libHGT** functions and is used to print the output reports.
   
-  * [hardyz.h][hardyz-h-link]. The is the only (local) include file for the program.  
+  * [hardyz.h][hardyz-h-link]. The is the only (local) include file for the program.
+
+  * [makefile][makefile-link]. This makefile is for use with the make program that is available with most development environments.
   
   * [makehardyz.bat][makehardyz-bat-link]. The is the "makefile" for the program.  Currently,
   this file is a Windows batch file (**not** an actual makefile), but can be easily converted to 
@@ -66,6 +68,7 @@ See their respective links for theirs terms of license.
 [hardyz-c-link]:		https://github.com/terry98004/HardyZ/blob/master/hardyz.c
 [CompHardyz-c-link]:	https://github.com/terry98004/HardyZ/blob/master/CompHardyz.c
 [hardyz-h-link]:		https://github.com/terry98004/HardyZ/blob/master/hardyz.h
+[makefile-link]:	https://github.com/terry98004/HardyZ/blob/master/makefile
 [makehardyz-bat-link]:	https://github.com/terry98004/HardyZ/blob/master/makehardyz.bat
 [mpfr-link]:			https://www.mpfr.org/
 [gcc-gnu-link]:			https://gcc.gnu.org/

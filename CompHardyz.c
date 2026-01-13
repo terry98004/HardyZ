@@ -1,5 +1,5 @@
 // -------------------------------------------------------------------
-// Program last modified January 9, 2026. 
+// Program last modified January 13, 2026. 
 // Copyright (c) 2024-2026 Terrence P. Murphy
 // MIT License -- see hardyz.c for details.
 // -------------------------------------------------------------------
@@ -19,12 +19,15 @@
 
 struct HZ_RPT 	hzReport;
 
-
 // *******************************************************************
-// We compute the Hardy Z values here.  The loop is over the count of
-// different 't' values to compute (based on hz.iCount). Inside the 
-// loop, we call ComputeSingleHardyZ. We then printf the result,
-// and then increase 't' by hz.dIncr and repeat hz.iCount times.
+// We have gathered the user's command line input and placed most of 
+// those values (plus various default values the user did not override)
+// into the passed struct HZ. We first do some further light processing 
+// of those values.  Then, we call the libHGT library function 
+// "HardyZWithCount" to compute the "Count" number of Hardy Z values.
+// As part of the "HardyZWithCount" processing, after each Hardy Z value 
+// is calculated, there is a call to the "HardyZCallback" function 
+// (below) to printf a report of that Hardy Z value.
 // *******************************************************************
 int ComputeAllHardyZ(struct HZ hz)
 {

@@ -167,16 +167,18 @@ hz.Threads		= hz.Threads > hz.Count ? hz.Count : hz.Threads;
 // and printf our HardyZ results.  Report the time it takes to do the
 // computations if the user enters the -s command line parameter.
 // -------------------------------------------------------------------
-clock_t	t;
-double 	time_taken;
+struct timespec start, end;
+double 			time_taken;
 
-t = clock(); 
+clock_gettime(CLOCK_MONOTONIC, &start);
 ComputeAllHardyZ(hz); 
-t = clock() - t; 
-time_taken = ((double)t)/CLOCKS_PER_SEC; // in seconds 
+clock_gettime(CLOCK_MONOTONIC, &end);
+time_taken =  (end.tv_sec - start.tv_sec);
+time_taken += (end.tv_nsec - start.tv_nsec) / 1000000000.0;
 
 if(hz.ShowSeconds){
 	printf("Compute took %f seconds to execute \n", time_taken); 
 	}
+
 return(EXIT_SUCCESS);
 }
